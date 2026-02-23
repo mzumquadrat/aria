@@ -1,0 +1,47 @@
+telegram:
+  bot_token: ${TELEGRAM_BOT_TOKEN}
+  allowed_user_id: ${TELEGRAM_USER_ID}
+
+openrouter:
+  api_key: ${OPENROUTER_API_KEY}
+  default_model: anthropic/claude-sonnet-4
+  fallback_model: openai/gpt-4o-mini
+
+shell:
+  allowed_directories:
+    - ~/projects
+    - ~/documents
+  denied_directories:
+    - /etc
+    - /root
+    - ~/.ssh
+  allowed_commands:
+    - ls
+    - cat
+    - git
+    - npm
+    - deno
+  denied_commands:
+    - rm -rf /
+    - sudo
+    - chmod 777
+  timeout: 30000
+  rate_limit:
+    max_per_minute: 10
+    max_per_hour: 100
+
+approval:
+  auto_approve_readonly: true
+  require_approval_write: true
+  approval_timeout: 300
+
+scheduler:
+  check_interval: 1000
+  max_concurrent: 5
+
+logging:
+  level: info
+  audit_enabled: true
+
+database:
+  path: ./data/aria.db
