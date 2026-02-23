@@ -92,6 +92,52 @@ export class SQLiteDatabase {
     `);
 
     this.db.exec(`
+      CREATE TABLE IF NOT EXISTS memories (
+        id TEXT PRIMARY KEY,
+        content TEXT NOT NULL,
+        category TEXT DEFAULT 'general',
+        importance INTEGER DEFAULT 5,
+        metadata TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        last_accessed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        access_count INTEGER DEFAULT 0
+      )
+    `);
+
+    this.db.exec(`
+      CREATE VIRTUAL TABLE IF NOT EXISTS memories_fts USING fts5(
+        content,
+        category,
+        content='memories',
+        content_rowid='rowid'
+      )
+    `);
+
+    this.db.exec(`
+      CREATE TRIGGER IF NOT EXISTS memories_ai AFTER INSERT ON memories BEGIN
+        INSERT INTO memories_fts(rowid, content, category) 
+        VALUES (new.rowid, new.content, new.category);
+      END
+    `);
+
+    this.db.exec(`
+      CREATE TRIGGER IF NOT EXISTS memories_ad AFTER DELETE ON memories BEGIN
+        INSERT INTO memories_fts(memories_fts, rowid, content, category) 
+        VALUES('delete', old.rowid, old.content, old.category);
+      END
+    `);
+
+    this.db.exec(`
+      CREATE TRIGGER IF NOT EXISTS memories_au AFTER UPDATE ON memories BEGIN
+        INSERT INTO memories_fts(memories_fts, rowid, content, category) 
+        VALUES('delete', old.rowid, old.content, old.category);
+        INSERT INTO memories_fts(rowid, content, category) 
+        VALUES (new.rowid, new.content, new.category);
+      END
+    `);
+
+    this.db.exec(`
       CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON messages(conversation_id)
     `);
     this.db.exec(`
