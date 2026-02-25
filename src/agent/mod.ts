@@ -2,6 +2,8 @@ import type { Config } from "../config/mod.ts";
 import { toolRegistry, type ToolResult } from "./tools.ts";
 import { loadSoul, formatSoulForPrompt } from "../soul/mod.ts";
 
+export type ToolCallCallback = (toolName: string) => void;
+
 interface Message {
   role: "system" | "user" | "assistant" | "tool";
   content: string;
@@ -45,9 +47,14 @@ export class Agent {
   private config: Config;
   private conversationHistory: Message[] = [];
   private maxHistoryLength: number = 20;
+  private onToolCall: ToolCallCallback | null = null;
 
   constructor(config: Config) {
     this.config = config;
+  }
+
+  setToolCallCallback(callback: ToolCallCallback): void {
+    this.onToolCall = callback;
   }
 
   async processMessage(userMessage: string): Promise<string> {
@@ -77,6 +84,9 @@ export class Agent {
         });
 
         for (const toolCall of llmResponse.tool_calls) {
+          if (this.onToolCall) {
+            this.onToolCall(toolCall.function.name);
+          }
           const result = await this.executeToolCall(toolCall);
           this.addToHistory({
             role: "tool",
