@@ -1,9 +1,10 @@
-import { Bot } from "grammy";
+import type { Bot } from "grammy";
 import type { Config } from "../config/mod.ts";
+import type { ElevenLabsService } from "../elevenlabs/mod.ts";
 import { createAuthMiddleware, createLoggingMiddleware } from "./middleware/mod.ts";
-import { handleStart, handleHelp, handleStatus, handleMessage } from "./handlers/mod.ts";
+import { handleStart, handleHelp, handleStatus, handleMessage, setupVoiceHandler } from "./handlers/mod.ts";
 
-export function setupBot(bot: Bot, config: Config): void {
+export function setupBot(bot: Bot, config: Config, elevenLabs?: ElevenLabsService): void {
   bot.use(createLoggingMiddleware());
   bot.use(createAuthMiddleware(config));
 
@@ -12,6 +13,10 @@ export function setupBot(bot: Bot, config: Config): void {
   bot.command("status", handleStatus);
 
   bot.on("message:text", handleMessage);
+
+  if (elevenLabs) {
+    setupVoiceHandler(bot, elevenLabs);
+  }
 }
 
 export { createBot, startBot, stopBot } from "./index.ts";

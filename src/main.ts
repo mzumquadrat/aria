@@ -1,6 +1,7 @@
 import { loadConfig, validateConfig } from "./config/mod.ts";
 import { initializeDatabase, closeDatabase } from "./storage/mod.ts";
 import { createBot, setupBot, startBot, stopBot } from "./bot/mod.ts";
+import { createElevenLabsService } from "./elevenlabs/mod.ts";
 
 let isShuttingDown = false;
 
@@ -16,7 +17,18 @@ async function main(): Promise<void> {
   console.log("Database initialized");
 
   const bot = createBot(config);
-  setupBot(bot, config);
+  
+  const elevenLabs = config.elevenlabs 
+    ? createElevenLabsService(config.elevenlabs) 
+    : undefined;
+  
+  if (elevenLabs) {
+    console.log("ElevenLabs service initialized");
+  } else {
+    console.log("ElevenLabs not configured - voice features disabled");
+  }
+  
+  setupBot(bot, config, elevenLabs);
   console.log("Bot configured");
 
   setupShutdownHandlers(bot);

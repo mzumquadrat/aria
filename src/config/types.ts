@@ -19,6 +19,12 @@ export const TelegramConfigSchema = z.object({
   allowedUserId: z.number().optional(),
 });
 
+export const ElevenLabsConfigSchema = z.object({
+  apiKey: z.string().min(1, "ElevenLabs API key is required"),
+  voiceId: z.string().default("21m00Tcm4TlvDq8ikWAM"),
+  modelId: z.string().default("eleven_multilingual_v2"),
+});
+
 export const OpenRouterConfigSchema = z.object({
   apiKey: z.string().min(1, "OpenRouter API key is required"),
   defaultModel: z.string().default("anthropic/claude-sonnet-4"),
@@ -45,6 +51,7 @@ export const LoggingConfigSchema = z.object({
 export const ConfigSchema = z.object({
   telegram: TelegramConfigSchema,
   openrouter: OpenRouterConfigSchema,
+  elevenlabs: ElevenLabsConfigSchema.optional(),
   shell: ShellConfigSchema.optional(),
   approval: ApprovalConfigSchema.optional(),
   scheduler: SchedulerConfigSchema.optional(),
@@ -58,6 +65,7 @@ export type Config = z.infer<typeof ConfigSchema>;
 export type ShellConfig = z.infer<typeof ShellConfigSchema>;
 export type TelegramConfig = z.infer<typeof TelegramConfigSchema>;
 export type OpenRouterConfig = z.infer<typeof OpenRouterConfigSchema>;
+export type ElevenLabsConfig = z.infer<typeof ElevenLabsConfigSchema>;
 export type ApprovalConfig = z.infer<typeof ApprovalConfigSchema>;
 export type SchedulerConfig = z.infer<typeof SchedulerConfigSchema>;
 export type LoggingConfig = z.infer<typeof LoggingConfigSchema>;

@@ -1,4 +1,5 @@
-import { Config, ConfigSchema } from "./types.ts";
+import type { Config } from "./types.ts";
+import { ConfigSchema } from "./types.ts";
 import { load as loadEnv } from "@std/dotenv";
 import { join } from "@std/path";
 import { parse as parseYaml } from "@std/yaml";
@@ -34,6 +35,11 @@ function loadFromEnv(): Record<string, unknown> {
     openrouter: {
       apiKey: Deno.env.get("OPENROUTER_API_KEY"),
       httpReferer: Deno.env.get("HTTP_REFERER"),
+    },
+    elevenlabs: {
+      apiKey: Deno.env.get("ELEVENLABS_API_KEY"),
+      voiceId: Deno.env.get("ELEVENLABS_VOICE_ID"),
+      modelId: Deno.env.get("ELEVENLABS_MODEL_ID"),
     },
     database: {
       path: Deno.env.get("DATABASE_PATH"),
