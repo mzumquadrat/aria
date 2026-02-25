@@ -22,3 +22,4 @@ export function setupBot(bot: Bot, config: Config, elevenLabs?: ElevenLabsServic
 }
 
 export { createBot, startBot, stopBot } from "./index.ts";
+export { initializeMessaging, sendMessage, sendMessageToChat, getAllowedUserId } from "./messaging.ts";

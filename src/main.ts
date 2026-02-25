@@ -6,6 +6,8 @@ import { createBraveSearchService } from "./brave/mod.ts";
 import { initializeAgent } from "./agent/mod.ts";
 import { toolRegistry } from "./agent/tools.ts";
 import { getMemoryRepository } from "./storage/memory/mod.ts";
+import { initializeScheduler, getScheduler } from "./scheduler/mod.ts";
+import { initializeMessaging } from "./bot/messaging.ts";
 
 let isShuttingDown = false;
 
@@ -50,6 +52,17 @@ async function main(): Promise<void> {
   setupBot(bot, config, elevenLabs);
   console.log("Bot configured");
 
+  initializeMessaging(bot, config);
+  
+  const schedulerConfig = {
+    checkInterval: config.scheduler?.checkInterval ?? 1000,
+    maxConcurrent: config.scheduler?.maxConcurrent ?? 5,
+  };
+  const scheduler = initializeScheduler(schedulerConfig);
+  scheduler.initialize(bot, config);
+  scheduler.start();
+  console.log("Scheduler started");
+
   setupShutdownHandlers(bot);
 
   await startBot(bot);
@@ -61,6 +74,11 @@ function setupShutdownHandlers(bot: ReturnType<typeof createBot>): void {
     isShuttingDown = true;
 
     console.log("\nShutting down gracefully...");
+    
+    const scheduler = getScheduler();
+    if (scheduler) {
+      scheduler.stop();
+    }
     
     stopBot(bot);
     closeDatabase();
