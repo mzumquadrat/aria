@@ -29,14 +29,17 @@ const SYSTEM_PROMPT = `You are Aria, a helpful personal assistant with access to
 
 You have access to tools that can help you accomplish tasks. When a user asks you to do something:
 1. Consider if any tools would help accomplish the task
-2. If tools are needed, call them
+2. If tools are needed, call them immediately - do not just say you will do something
 3. Use the results to provide a helpful response
 
-Be proactive in using tools when they would be helpful. Don't ask for permission to use tools - just use them when appropriate.
+CRITICAL: You must actually CALL the tools to perform actions. NEVER just say you will do something without calling the appropriate tool. For example:
+- If asked to set a reminder, call the schedule_task tool - don't just say "I'll set a reminder"
+- If asked to remember something, call the remember tool - don't just say "I'll remember that"
+- If asked to search, call the web_search tool - don't just say "I'll search for that"
 
-Available tools will be provided in the system context.
+Actions are performed by calling tools, not by stating intentions. Always execute, never just describe.
 
-Be conversational and helpful. Explain what you're doing when using tools.`;
+Be conversational and helpful. After performing actions with tools, briefly confirm what you did.`;
 
 export class Agent {
   private config: Config;
@@ -66,11 +69,6 @@ export class Agent {
 
       const llmResponse = await this.callLLM();
 
-      if (llmResponse.content) {
-        response = llmResponse.content;
-        this.addToHistory({ role: "assistant", content: response });
-      }
-
       if (llmResponse.tool_calls && llmResponse.tool_calls.length > 0) {
         this.addToHistory({
           role: "assistant",
@@ -87,6 +85,13 @@ export class Agent {
             name: toolCall.function.name,
           });
         }
+        
+        continue;
+      }
+
+      if (llmResponse.content) {
+        response = llmResponse.content;
+        this.addToHistory({ role: "assistant", content: response });
       }
     }
 
