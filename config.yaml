@@ -1,47 +1,156 @@
+# ===========================================
+# Aria Personal Assistant Configuration
+# ===========================================
+# This file configures Aria's behavior.
+# Environment variables can be referenced with ${VAR_NAME}
+# and will be substituted at runtime.
+
+# -------------------------------------------
+# Telegram Bot Configuration (Required)
+# -------------------------------------------
 telegram:
+  # Your bot token from @BotFather
   bot_token: ${TELEGRAM_BOT_TOKEN}
+  
+  # Restrict bot access to this Telegram user ID
+  # Get your ID from @userinfobot
+  # Leave empty to allow all users (not recommended for production)
   allowed_user_id: ${TELEGRAM_USER_ID}
 
+# -------------------------------------------
+# OpenRouter LLM Configuration (Required)
+# -------------------------------------------
 openrouter:
+  # API key from https://openrouter.ai
   api_key: ${OPENROUTER_API_KEY}
+  
+  # Primary model for conversations
+  # Options: anthropic/claude-sonnet-4, openai/gpt-4o, etc.
   default_model: anthropic/claude-sonnet-4
+  
+  # Fallback model if primary fails
   fallback_model: openai/gpt-4o-mini
+  
+  # HTTP referer for OpenRouter analytics (optional)
+  http_referer: ${HTTP_REFERER:-https://github.com/mzumquadrat/aria}
 
+# -------------------------------------------
+# ElevenLabs Voice Configuration (Optional)
+# -------------------------------------------
+# Enable voice message transcription and TTS responses
+elevenlabs:
+  api_key: ${ELEVENLABS_API_KEY:-}
+  
+  # Voice for text-to-speech
+  # Browse voices at https://elevenlabs.io/voice-library
+  # Popular: Rachel (21m00Tcm4TlvDq8ikWAM), Adam (onwK4e9ZLuTADq8NiFz7)
+  voice_id: ${ELEVENLABS_VOICE_ID:-21m00Tcm4TlvDq8ikWAM}
+  
+  # TTS model: eleven_multilingual_v2 (recommended) or eleven_monolingual_v1
+  model_id: ${ELEVENLABS_MODEL_ID:-eleven_multilingual_v2}
+
+# -------------------------------------------
+# Brave Search Configuration (Optional)
+# -------------------------------------------
+# Enable web search capability for the agent
+brave:
+  api_key: ${BRAVE_API_KEY:-}
+  
+  # API endpoint (usually doesn't need changing)
+  base_url: https://api.search.brave.com/res/v1
+  
+  # Number of results to return per search
+  count: 10
+
+# -------------------------------------------
+# Shell Execution Policy
+# -------------------------------------------
+# Controls what commands skills can execute
 shell:
+  # Directories where skills can read/write
   allowed_directories:
     - ~/projects
     - ~/documents
+    - ~/downloads
+  
+  # Directories that are always blocked
   denied_directories:
     - /etc
     - /root
     - ~/.ssh
+    - ~/.gnupg
+  
+  # Commands skills are allowed to run
+  # Leave empty to allow all (not recommended)
   allowed_commands:
     - ls
     - cat
+    - head
+    - tail
+    - grep
+    - find
     - git
     - npm
     - deno
+    - python3
+    - node
+  
+  # Commands that are always blocked
   denied_commands:
     - rm -rf /
+    - rm -rf /*
     - sudo
     - chmod 777
+    - chown
+    - mkfs
+    - dd
+  
+  # Maximum execution time per command (ms)
   timeout: 30000
+  
+  # Rate limiting to prevent abuse
   rate_limit:
     max_per_minute: 10
     max_per_hour: 100
 
+# -------------------------------------------
+# Approval Settings
+# -------------------------------------------
+# For sensitive operations, require user approval
 approval:
+  # Automatically approve read-only operations
   auto_approve_readonly: true
+  
+  # Require explicit approval for write/delete operations
   require_approval_write: true
+  
+  # Seconds to wait for approval before canceling
   approval_timeout: 300
 
+# -------------------------------------------
+# Task Scheduler
+# -------------------------------------------
+# For scheduled tasks and reminders
 scheduler:
+  # How often to check for pending tasks (ms)
   check_interval: 1000
+  
+  # Maximum tasks running simultaneously
   max_concurrent: 5
 
+# -------------------------------------------
+# Logging
+# -------------------------------------------
 logging:
-  level: info
+  # Log verbosity: debug, info, warn, error
+  level: ${LOG_LEVEL:-info}
+  
+  # Enable audit logging for sensitive operations
   audit_enabled: true
 
+# -------------------------------------------
+# Database
+# -------------------------------------------
 database:
-  path: ./data/aria.db
+  # Path to SQLite database (stores memories, skills, etc.)
+  path: ${DATABASE_PATH:-./data/aria.db}
