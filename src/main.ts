@@ -2,6 +2,10 @@ import { loadConfig, validateConfig } from "./config/mod.ts";
 import { initializeDatabase, closeDatabase } from "./storage/mod.ts";
 import { createBot, setupBot, startBot, stopBot } from "./bot/mod.ts";
 import { createElevenLabsService } from "./elevenlabs/mod.ts";
+import { createBraveSearchService } from "./brave/mod.ts";
+import { initializeAgent } from "./agent/mod.ts";
+import { toolRegistry } from "./agent/tools.ts";
+import { getMemoryRepository } from "./storage/memory/mod.ts";
 
 let isShuttingDown = false;
 
@@ -15,6 +19,21 @@ async function main(): Promise<void> {
 
   await initializeDatabase({ path: config.database?.path || "./data/aria.db" });
   console.log("Database initialized");
+
+  initializeAgent(config);
+  console.log("Agent initialized");
+
+  if (config.brave) {
+    const braveService = createBraveSearchService(config.brave);
+    toolRegistry.setBraveService(braveService);
+    console.log("Brave Search service initialized");
+  } else {
+    console.log("Brave Search not configured - web search disabled");
+  }
+
+  const memoryRepo = getMemoryRepository();
+  toolRegistry.setMemoryRepo(memoryRepo);
+  console.log("Memory service initialized");
 
   const bot = createBot(config);
   

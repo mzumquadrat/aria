@@ -25,6 +25,12 @@ export const ElevenLabsConfigSchema = z.object({
   modelId: z.string().default("eleven_multilingual_v2"),
 });
 
+export const BraveSearchConfigSchema = z.object({
+  apiKey: z.string().min(1, "Brave Search API key is required"),
+  baseUrl: z.string().default("https://api.search.brave.com/res/v1"),
+  count: z.number().default(10),
+});
+
 export const OpenRouterConfigSchema = z.object({
   apiKey: z.string().min(1, "OpenRouter API key is required"),
   defaultModel: z.string().default("anthropic/claude-sonnet-4"),
@@ -52,6 +58,7 @@ export const ConfigSchema = z.object({
   telegram: TelegramConfigSchema,
   openrouter: OpenRouterConfigSchema,
   elevenlabs: ElevenLabsConfigSchema.optional(),
+  brave: BraveSearchConfigSchema.optional(),
   shell: ShellConfigSchema.optional(),
   approval: ApprovalConfigSchema.optional(),
   scheduler: SchedulerConfigSchema.optional(),
@@ -66,6 +73,7 @@ export type ShellConfig = z.infer<typeof ShellConfigSchema>;
 export type TelegramConfig = z.infer<typeof TelegramConfigSchema>;
 export type OpenRouterConfig = z.infer<typeof OpenRouterConfigSchema>;
 export type ElevenLabsConfig = z.infer<typeof ElevenLabsConfigSchema>;
+export type BraveSearchConfig = z.infer<typeof BraveSearchConfigSchema>;
 export type ApprovalConfig = z.infer<typeof ApprovalConfigSchema>;
 export type SchedulerConfig = z.infer<typeof SchedulerConfigSchema>;
 export type LoggingConfig = z.infer<typeof LoggingConfigSchema>;

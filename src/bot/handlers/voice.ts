@@ -2,6 +2,7 @@ import type { Context } from "grammy";
 import type { Bot } from "grammy";
 import { InputFile } from "grammy";
 import type { ElevenLabsService } from "../../elevenlabs/mod.ts";
+import { getAgent } from "../../agent/mod.ts";
 
 export function createVoiceHandler(elevenLabs: ElevenLabsService) {
   return async (ctx: Context): Promise<void> => {
@@ -35,7 +36,14 @@ export function createVoiceHandler(elevenLabs: ElevenLabsService) {
 
       const transcription = await elevenLabs.transcribe(audioBuffer);
 
-      const responseText = `I heard: "${transcription.text}"\n\nProcessing your request...`;
+      const agent = getAgent();
+      let responseText: string;
+
+      if (agent) {
+        responseText = await agent.processMessage(transcription.text);
+      } else {
+        responseText = `I heard: "${transcription.text}"\n\nAgent not available.`;
+      }
       
       const ttsResult = await elevenLabs.textToSpeech(responseText);
 

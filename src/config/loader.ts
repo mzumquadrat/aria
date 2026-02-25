@@ -41,6 +41,13 @@ function loadFromEnv(): Record<string, unknown> {
       voiceId: Deno.env.get("ELEVENLABS_VOICE_ID"),
       modelId: Deno.env.get("ELEVENLABS_MODEL_ID"),
     },
+    brave: {
+      apiKey: Deno.env.get("BRAVE_API_KEY"),
+      baseUrl: Deno.env.get("BRAVE_API_BASE_URL"),
+      count: Deno.env.get("BRAVE_SEARCH_COUNT") 
+        ? parseInt(Deno.env.get("BRAVE_SEARCH_COUNT")!, 10) 
+        : undefined,
+    },
     database: {
       path: Deno.env.get("DATABASE_PATH"),
     },
