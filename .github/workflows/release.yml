@@ -1,0 +1,97 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: linux
+            arch: x86_64
+            runner: ubuntu-latest
+          - target: aarch64-unknown-linux-gnu
+            os: linux
+            arch: arm64
+            runner: ubuntu-latest
+          - target: aarch64-apple-darwin
+            os: macos
+            arch: arm64
+            runner: macos-latest
+
+    runs-on: ${{ matrix.runner }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Type check
+        run: deno check --allow-import src/main.ts
+
+      - name: Run tests
+        run: deno task test
+
+      - name: Build executable
+        run: |
+          deno compile \
+            --allow-net \
+            --allow-env \
+            --allow-read \
+            --allow-write \
+            --allow-run \
+            --allow-sys \
+            --allow-ffi \
+            --allow-import \
+            --target ${{ matrix.target }} \
+            --output aria-${{ matrix.os }}-${{ matrix.arch }} \
+            src/main.ts
+
+      - name: Create distribution package
+        run: |
+          mkdir -p dist
+          mv aria-${{ matrix.os }}-${{ matrix.arch }} dist/
+          cp soul.md dist/
+          cp config.yaml dist/
+          cp .env.example dist/
+          cp README.md dist/
+          tar -czvf aria-${{ matrix.os }}-${{ matrix.arch }}.tar.gz -C dist .
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: aria-${{ matrix.os }}-${{ matrix.arch }}
+          path: aria-${{ matrix.os }}-${{ matrix.arch }}.tar.gz
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Display structure of downloaded files
+        run: ls -la artifacts/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/**/aria-*.tar.gz
+          generate_release_notes: true
