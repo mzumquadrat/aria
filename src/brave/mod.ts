@@ -40,7 +40,7 @@ export class BraveSearchService {
       headers: {
         "Accept": "application/json",
         "Accept-Encoding": "gzip",
-        "X-Subscription-Key": this.config.apiKey,
+        "X-Subscription-Token": this.config.apiKey,
       },
     });
 
