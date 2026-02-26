@@ -48,6 +48,21 @@ function loadFromEnv(): Record<string, unknown> {
         ? parseInt(Deno.env.get("BRAVE_SEARCH_COUNT")!, 10) 
         : undefined,
     },
+    calendar: {
+      caldav: Deno.env.get("CALDAV_SERVER_URL") ? {
+        serverUrl: Deno.env.get("CALDAV_SERVER_URL"),
+        username: Deno.env.get("CALDAV_USERNAME"),
+        password: Deno.env.get("CALDAV_PASSWORD"),
+        defaultCalendar: Deno.env.get("CALDAV_DEFAULT_CALENDAR"),
+      } : undefined,
+      google: Deno.env.get("GOOGLE_CALENDAR_ACCESS_TOKEN") ? {
+        accessToken: Deno.env.get("GOOGLE_CALENDAR_ACCESS_TOKEN"),
+        refreshToken: Deno.env.get("GOOGLE_CALENDAR_REFRESH_TOKEN"),
+        clientId: Deno.env.get("GOOGLE_CALENDAR_CLIENT_ID"),
+        clientSecret: Deno.env.get("GOOGLE_CALENDAR_CLIENT_SECRET"),
+        defaultCalendar: Deno.env.get("GOOGLE_CALENDAR_DEFAULT"),
+      } : undefined,
+    },
     database: {
       path: Deno.env.get("DATABASE_PATH"),
     },
