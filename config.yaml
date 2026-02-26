@@ -63,6 +63,42 @@ brave:
   count: 10
 
 # -------------------------------------------
+# Calendar Configuration (Optional)
+# -------------------------------------------
+# Enable calendar integration (CalDAV and/or Google Calendar)
+# At least one provider must be configured
+calendar:
+  # CalDAV provider (iCloud, Nextcloud, Radicale, etc.)
+  caldav:
+    # Server URL (e.g., https://caldav.icloud.com for iCloud)
+    server_url: ${CALDAV_SERVER_URL:-}
+    
+    # Username (Apple ID for iCloud)
+    username: ${CALDAV_USERNAME:-}
+    
+    # Password (app-specific password for iCloud)
+    # For iCloud: Generate at https://appleid.apple.com > Security > App-Specific Passwords
+    password: ${CALDAV_PASSWORD:-}
+    
+    # Default calendar to use (optional, uses first available if not set)
+    default_calendar: ${CALDAV_DEFAULT_CALENDAR:-}
+  
+  # Google Calendar provider
+  google:
+    # OAuth 2.0 access token
+    access_token: ${GOOGLE_CALENDAR_ACCESS_TOKEN:-}
+    
+    # Refresh token (for automatic token renewal)
+    refresh_token: ${GOOGLE_CALENDAR_REFRESH_TOKEN:-}
+    
+    # OAuth client credentials (for token refresh)
+    client_id: ${GOOGLE_CALENDAR_CLIENT_ID:-}
+    client_secret: ${GOOGLE_CALENDAR_CLIENT_SECRET:-}
+    
+    # Default calendar (usually 'primary')
+    default_calendar: ${GOOGLE_CALENDAR_DEFAULT:-primary}
+
+# -------------------------------------------
 # Shell Execution Policy
 # -------------------------------------------
 # Controls what commands skills can execute

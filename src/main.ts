@@ -3,6 +3,7 @@ import { initializeDatabase, closeDatabase } from "./storage/mod.ts";
 import { createBot, setupBot, startBot, stopBot } from "./bot/mod.ts";
 import { createElevenLabsService } from "./elevenlabs/mod.ts";
 import { createBraveSearchService } from "./brave/mod.ts";
+import { createCalendarService } from "./calendar/mod.ts";
 import { initializeAgent } from "./agent/mod.ts";
 import { toolRegistry } from "./agent/tools.ts";
 import { getMemoryRepository } from "./storage/memory/mod.ts";
@@ -31,6 +32,17 @@ async function main(): Promise<void> {
     console.log("Brave Search service initialized");
   } else {
     console.log("Brave Search not configured - web search disabled");
+  }
+
+  if (config.calendar && (config.calendar.caldav || config.calendar.google)) {
+    const calendarService = createCalendarService(config.calendar);
+    toolRegistry.setCalendarService(calendarService);
+    const providers: string[] = [];
+    if (config.calendar.caldav) providers.push("CalDAV");
+    if (config.calendar.google) providers.push("Google");
+    console.log(`Calendar service initialized (${providers.join(", ")})`);
+  } else {
+    console.log("Calendar not configured - calendar features disabled");
   }
 
   const memoryRepo = getMemoryRepository();

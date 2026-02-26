@@ -3,6 +3,7 @@ import { skillRecordToDefinition, executeSkill } from "../skills/mod.ts";
 import { getAllSkills } from "../skills/repository.ts";
 import type { MemoryRepository, MemoryCategory } from "../storage/memory/mod.ts";
 import type { BraveSearchService } from "../brave/mod.ts";
+import type { CalendarService } from "../calendar/mod.ts";
 import { getTaskRepository } from "../storage/scheduler/repository.ts";
 import { validateCron, getNextOccurrence } from "../scheduler/cron.ts";
 import type { TaskType, CreateTaskInput } from "../storage/scheduler/types.ts";
@@ -151,14 +152,94 @@ const BUILTIN_TOOLS: Tool[] = [
       required: ["taskId"],
     },
   },
+  {
+    type: "builtin",
+    name: "list_calendars",
+    description: "List available calendars from the configured calendar service.",
+    inputSchema: {
+      type: "object",
+      properties: {},
+    },
+  },
+  {
+    type: "builtin",
+    name: "get_calendar_events",
+    description: "Get calendar events within a date range. Defaults to next 7 days if no range specified.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        startDate: { type: "string", description: "Start date in ISO format (e.g., 2024-01-01T00:00:00)" },
+        endDate: { type: "string", description: "End date in ISO format (e.g., 2024-01-07T23:59:59)" },
+        days: { type: "number", description: "Number of days to fetch (default: 7)" },
+        calendar: { type: "string", description: "Specific calendar to query (optional)" },
+      },
+    },
+  },
+  {
+    type: "builtin",
+    name: "create_calendar_event",
+    description: "Create a new calendar event.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        summary: { type: "string", description: "Event title/summary" },
+        start: { type: "string", description: "Start time in ISO format (e.g., 2024-01-15T10:00:00)" },
+        end: { type: "string", description: "End time in ISO format (e.g., 2024-01-15T11:00:00)" },
+        description: { type: "string", description: "Event description (optional)" },
+        location: { type: "string", description: "Event location (optional)" },
+        timezone: { type: "string", description: "IANA timezone (e.g., Europe/Berlin, America/New_York)" },
+        calendar: { type: "string", description: "Specific calendar to add event to (optional)" },
+      },
+      required: ["summary", "start", "end"],
+    },
+  },
+  {
+    type: "builtin",
+    name: "update_calendar_event",
+    description: "Update an existing calendar event. Requires eventUrl and etag from a previous get_calendar_events call. Summary, start, and end are required.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        eventUrl: { type: "string", description: "Event URL/ID from get_calendar_events (uid field)" },
+        etag: { type: "string", description: "Event ETag from get_calendar_events (required for CalDAV updates)" },
+        summary: { type: "string", description: "New event title/summary" },
+        start: { type: "string", description: "New start time in ISO format" },
+        end: { type: "string", description: "New end time in ISO format" },
+        description: { type: "string", description: "New event description" },
+        location: { type: "string", description: "New event location" },
+        timezone: { type: "string", description: "IANA timezone" },
+        calendar: { type: "string", description: "Calendar containing the event (optional)" },
+      },
+      required: ["eventUrl", "etag", "summary", "start", "end"],
+    },
+  },
+  {
+    type: "builtin",
+    name: "delete_calendar_event",
+    description: "Delete a calendar event. WARNING: This action is irreversible. Always confirm with the user before deleting events. Requires eventUrl and etag from a previous get_calendar_events call.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        eventUrl: { type: "string", description: "Event URL/ID from get_calendar_events (uid field)" },
+        etag: { type: "string", description: "Event ETag from get_calendar_events (required for CalDAV deletes)" },
+        confirm: { type: "boolean", description: "Must be true to confirm deletion" },
+      },
+      required: ["eventUrl", "etag", "confirm"],
+    },
+  },
 ];
 
 export class ToolRegistry {
   private braveService: BraveSearchService | null = null;
+  private calendarService: CalendarService | null = null;
   private memoryRepo: MemoryRepository | null = null;
 
   setBraveService(service: BraveSearchService | null): void {
     this.braveService = service;
+  }
+
+  setCalendarService(service: CalendarService | null): void {
+    this.calendarService = service;
   }
 
   setMemoryRepo(repo: MemoryRepository | null): void {
@@ -213,6 +294,16 @@ export class ToolRegistry {
         return this.executeListTasks(input as { status?: string; limit?: number });
       case "cancel_task":
         return this.executeCancelTask(input as { taskId: string });
+      case "list_calendars":
+        return await this.executeListCalendars();
+      case "get_calendar_events":
+        return await this.executeGetCalendarEvents(input as { startDate?: string; endDate?: string; days?: number; calendar?: string });
+      case "create_calendar_event":
+        return await this.executeCreateCalendarEvent(input as { summary: string; start: string; end: string; description?: string; location?: string; timezone?: string; calendar?: string });
+      case "update_calendar_event":
+        return await this.executeUpdateCalendarEvent(input as { eventUrl: string; etag: string; summary: string; start: string; end: string; description?: string; location?: string; timezone?: string; calendar?: string });
+      case "delete_calendar_event":
+        return await this.executeDeleteCalendarEvent(input as { eventUrl: string; etag: string; confirm: boolean });
       default:
         return { tool, success: false, error: `Unknown tool: ${tool}` };
     }
@@ -439,6 +530,98 @@ export class ToolRegistry {
       }
     } catch (error) {
       return { tool: "cancel_task", success: false, error: error instanceof Error ? error.message : "Failed to cancel task" };
+    }
+  }
+
+  private async executeListCalendars(): Promise<ToolResult> {
+    if (!this.calendarService) {
+      return { tool: "list_calendars", success: false, error: "Calendar service not configured" };
+    }
+
+    try {
+      const calendars = await this.calendarService.listCalendars();
+      return { tool: "list_calendars", success: true, output: calendars };
+    } catch (error) {
+      return { tool: "list_calendars", success: false, error: error instanceof Error ? error.message : "Failed to list calendars" };
+    }
+  }
+
+  private async executeGetCalendarEvents(input: { startDate?: string; endDate?: string; days?: number; calendar?: string }): Promise<ToolResult> {
+    if (!this.calendarService) {
+      return { tool: "get_calendar_events", success: false, error: "Calendar service not configured" };
+    }
+
+    try {
+      const options: { startDate?: string; endDate?: string; days?: number; calendar?: string } = {};
+      if (input.startDate !== undefined) options.startDate = input.startDate;
+      if (input.endDate !== undefined) options.endDate = input.endDate;
+      if (input.days !== undefined) options.days = input.days;
+      if (input.calendar !== undefined) options.calendar = input.calendar;
+      const events = await this.calendarService.getEvents(options);
+      return { tool: "get_calendar_events", success: true, output: events };
+    } catch (error) {
+      return { tool: "get_calendar_events", success: false, error: error instanceof Error ? error.message : "Failed to get events" };
+    }
+  }
+
+  private async executeCreateCalendarEvent(input: { summary: string; start: string; end: string; description?: string; location?: string; timezone?: string; calendar?: string }): Promise<ToolResult> {
+    if (!this.calendarService) {
+      return { tool: "create_calendar_event", success: false, error: "Calendar service not configured" };
+    }
+
+    try {
+      const eventInput: { summary: string; start: string; end: string; description?: string; location?: string; timezone?: string } = {
+        summary: input.summary,
+        start: input.start,
+        end: input.end,
+      };
+      if (input.description !== undefined) eventInput.description = input.description;
+      if (input.location !== undefined) eventInput.location = input.location;
+      if (input.timezone !== undefined) eventInput.timezone = input.timezone;
+      const event = await this.calendarService.createEvent(eventInput, input.calendar);
+      return { tool: "create_calendar_event", success: true, output: event };
+    } catch (error) {
+      return { tool: "create_calendar_event", success: false, error: error instanceof Error ? error.message : "Failed to create event" };
+    }
+  }
+
+  private async executeUpdateCalendarEvent(input: { eventUrl: string; etag: string; summary: string; start: string; end: string; description?: string; location?: string; timezone?: string; calendar?: string }): Promise<ToolResult> {
+    if (!this.calendarService) {
+      return { tool: "update_calendar_event", success: false, error: "Calendar service not configured" };
+    }
+
+    try {
+      const eventInput: { eventUrl: string; etag: string; summary: string; start: string; end: string; description?: string; location?: string; timezone?: string } = {
+        eventUrl: input.eventUrl,
+        etag: input.etag,
+        summary: input.summary,
+        start: input.start,
+        end: input.end,
+      };
+      if (input.description !== undefined) eventInput.description = input.description;
+      if (input.location !== undefined) eventInput.location = input.location;
+      if (input.timezone !== undefined) eventInput.timezone = input.timezone;
+      const event = await this.calendarService.updateEvent(eventInput, input.calendar);
+      return { tool: "update_calendar_event", success: true, output: event };
+    } catch (error) {
+      return { tool: "update_calendar_event", success: false, error: error instanceof Error ? error.message : "Failed to update event" };
+    }
+  }
+
+  private async executeDeleteCalendarEvent(input: { eventUrl: string; etag: string; confirm: boolean }): Promise<ToolResult> {
+    if (!this.calendarService) {
+      return { tool: "delete_calendar_event", success: false, error: "Calendar service not configured" };
+    }
+
+    if (!input.confirm) {
+      return { tool: "delete_calendar_event", success: false, error: "Deletion not confirmed. Set confirm=true to proceed with deletion." };
+    }
+
+    try {
+      await this.calendarService.deleteEvent(input.eventUrl, input.etag);
+      return { tool: "delete_calendar_event", success: true, output: { eventUrl: input.eventUrl, deleted: true } };
+    } catch (error) {
+      return { tool: "delete_calendar_event", success: false, error: error instanceof Error ? error.message : "Failed to delete event" };
     }
   }
 }

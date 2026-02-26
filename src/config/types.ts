@@ -31,6 +31,26 @@ export const BraveSearchConfigSchema = z.object({
   count: z.number().default(10),
 });
 
+export const CalDAVConfigSchema = z.object({
+  serverUrl: z.string().url("CalDAV server URL must be valid"),
+  username: z.string().min(1, "CalDAV username is required"),
+  password: z.string().min(1, "CalDAV password is required"),
+  defaultCalendar: z.string().optional(),
+});
+
+export const GoogleCalendarConfigSchema = z.object({
+  accessToken: z.string().min(1, "Google Calendar access token is required"),
+  refreshToken: z.string().optional(),
+  clientId: z.string().optional(),
+  clientSecret: z.string().optional(),
+  defaultCalendar: z.string().default("primary"),
+});
+
+export const CalendarConfigSchema = z.object({
+  caldav: CalDAVConfigSchema.optional(),
+  google: GoogleCalendarConfigSchema.optional(),
+});
+
 export const OpenRouterConfigSchema = z.object({
   apiKey: z.string().min(1, "OpenRouter API key is required"),
   defaultModel: z.string().default("anthropic/claude-sonnet-4"),
@@ -59,6 +79,7 @@ export const ConfigSchema = z.object({
   openrouter: OpenRouterConfigSchema,
   elevenlabs: ElevenLabsConfigSchema.optional(),
   brave: BraveSearchConfigSchema.optional(),
+  calendar: CalendarConfigSchema.optional(),
   shell: ShellConfigSchema.optional(),
   approval: ApprovalConfigSchema.optional(),
   scheduler: SchedulerConfigSchema.optional(),
@@ -74,6 +95,9 @@ export type TelegramConfig = z.infer<typeof TelegramConfigSchema>;
 export type OpenRouterConfig = z.infer<typeof OpenRouterConfigSchema>;
 export type ElevenLabsConfig = z.infer<typeof ElevenLabsConfigSchema>;
 export type BraveSearchConfig = z.infer<typeof BraveSearchConfigSchema>;
+export type CalDAVConfig = z.infer<typeof CalDAVConfigSchema>;
+export type GoogleCalendarConfig = z.infer<typeof GoogleCalendarConfigSchema>;
+export type CalendarConfig = z.infer<typeof CalendarConfigSchema>;
 export type ApprovalConfig = z.infer<typeof ApprovalConfigSchema>;
 export type SchedulerConfig = z.infer<typeof SchedulerConfigSchema>;
 export type LoggingConfig = z.infer<typeof LoggingConfigSchema>;
