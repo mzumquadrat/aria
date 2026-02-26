@@ -19,7 +19,7 @@ export class ElevenLabsService {
 
   async transcribe(audioBuffer: ArrayBuffer): Promise<TranscriptionResult> {
     const formData = new FormData();
-    formData.append("audio", new Blob([audioBuffer]), "audio.ogg");
+    formData.append("file", new Blob([audioBuffer]), "audio.ogg");
     formData.append("model_id", this.config.modelId);
 
     const response = await fetch(`${ELEVENLABS_API_BASE}/speech-to-text`, {
