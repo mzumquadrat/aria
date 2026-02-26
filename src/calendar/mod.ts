@@ -11,6 +11,7 @@ export interface CalendarEvent {
   location: string | null;
   timezone: string | undefined;
   etag: string | undefined;
+  eventUrl: string | undefined;
 }
 
 export interface CreateEventInput {
@@ -98,7 +99,7 @@ export class CalendarService {
 
     if (type === "caldav") {
       const calendars = await (client as CalDAVClient).fetchCalendars();
-      return calendars.map((cal) => ({
+      return calendars.map((cal: { url: string; displayName: string }) => ({
         url: cal.url,
         name: cal.displayName,
       }));
@@ -127,9 +128,34 @@ export class CalendarService {
     if (type === "caldav") {
       const caldavClient = client as CalDAVClient;
       const days = options?.days || 7;
+
+      const calendars = await caldavClient.fetchCalendars();
+      const targetCal = calendar
+        ? calendars.find((c: { displayName: string }) => c.displayName === calendar)
+        : calendars[0];
+
+      if (!targetCal) {
+        return [];
+      }
+
       const events = await caldavClient.fetchEvents(days, calendar || null);
 
-      return events.map((event) => this.mapCalDAVEvent(event));
+      return events.map((event: { uid: string; summary: string; start: string; end: string | null; description: string | null; location: string | null; timezone?: string; etag?: string }) => {
+        const calUrl = targetCal.url.endsWith("/") ? targetCal.url : `${targetCal.url}/`;
+        const eventUrl = event.uid ? `${calUrl}${event.uid}.ics` : undefined;
+        return {
+          id: event.uid,
+          uid: event.uid,
+          summary: event.summary,
+          description: event.description,
+          start: event.start,
+          end: event.end,
+          location: event.location,
+          timezone: event.timezone,
+          etag: event.etag,
+          eventUrl,
+        };
+      });
     } else {
       const googleClient = client as GoogleCalendarClient;
       const events = await googleClient.fetchEvents({
@@ -137,7 +163,18 @@ export class CalendarService {
         calendar: calendar || "primary",
       });
 
-      return events.map((event) => this.mapGoogleEvent(event));
+      return events.map((event: { uid: string; summary: string; start: string; end: string | null; description: string | null; location: string | null; timezone?: string }) => ({
+        id: event.uid,
+        uid: event.uid,
+        summary: event.summary,
+        description: event.description,
+        start: event.start,
+        end: event.end,
+        location: event.location,
+        timezone: event.timezone,
+        etag: undefined,
+        eventUrl: event.uid,
+      }));
     }
   }
 
@@ -154,12 +191,14 @@ export class CalendarService {
       const caldavClient = client as CalDAVClient;
       const calendars = await caldavClient.fetchCalendars();
       const calUrl = targetCalendar
-        ? calendars.find((c) => c.displayName === targetCalendar)?.url
+        ? calendars.find((c: { displayName: string }) => c.displayName === targetCalendar)?.url
         : calendars[0]?.url;
 
       if (!calUrl) {
         throw new Error("No calendar available");
       }
+
+      const normalizedCalUrl = calUrl.endsWith("/") ? calUrl : `${calUrl}/`;
 
       const eventInput = {
         summary: input.summary,
@@ -170,7 +209,7 @@ export class CalendarService {
         ...(input.timezone && { timezone: input.timezone }),
       };
 
-      const result = await caldavClient.createEvent(calUrl, eventInput);
+      const result = await caldavClient.createEvent(normalizedCalUrl, eventInput);
 
       const newEvent: CalendarEvent = {
         id: result.uid,
@@ -182,6 +221,7 @@ export class CalendarService {
         location: input.location || null,
         timezone: input.timezone,
         etag: result.etag,
+        eventUrl: `${normalizedCalUrl}${result.uid}.ics`,
       };
 
       return newEvent;
@@ -208,6 +248,7 @@ export class CalendarService {
         location: input.location || null,
         timezone: input.timezone,
         etag: undefined,
+        eventUrl: result.uid,
       };
 
       return newEvent;
@@ -255,6 +296,7 @@ export class CalendarService {
         location: input.location || null,
         timezone: input.timezone,
         etag: result.etag,
+        eventUrl: input.eventUrl,
       };
     } else {
       const googleClient = client as GoogleCalendarClient;
@@ -289,6 +331,7 @@ export class CalendarService {
         location: input.location || null,
         timezone: input.timezone,
         etag: result.etag,
+        eventUrl: eventId,
       };
     }
   }
@@ -309,34 +352,6 @@ export class CalendarService {
       const eventId = eventUrl;
       await googleClient.deleteEvent("primary", eventId);
     }
-  }
-
-  private mapCalDAVEvent(event: { uid: string; summary: string; start: string; end: string | null; description: string | null; location: string | null; timezone?: string; etag?: string }): CalendarEvent {
-    return {
-      id: event.uid,
-      uid: event.uid,
-      summary: event.summary,
-      description: event.description,
-      start: event.start,
-      end: event.end,
-      location: event.location,
-      timezone: event.timezone,
-      etag: event.etag,
-    };
-  }
-
-  private mapGoogleEvent(event: { uid: string; summary: string; start: string; end: string | null; description: string | null; location: string | null; timezone?: string }): CalendarEvent {
-    return {
-      id: event.uid,
-      uid: event.uid,
-      summary: event.summary,
-      description: event.description,
-      start: event.start,
-      end: event.end,
-      location: event.location,
-      timezone: event.timezone,
-      etag: undefined,
-    };
   }
 }
 

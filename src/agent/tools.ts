@@ -213,7 +213,7 @@ const BUILTIN_TOOLS: Tool[] = [
       required: ["eventUrl", "etag", "summary", "start", "end"],
     },
   },
-  {
+{
     type: "builtin",
     name: "delete_calendar_event",
     description: "Delete a calendar event. WARNING: This action is irreversible. Always confirm with the user before deleting events. Requires eventUrl and etag from a previous get_calendar_events call.",
