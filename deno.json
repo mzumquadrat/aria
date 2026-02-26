@@ -1,6 +1,6 @@
 {
   "name": "@mzumquadrat/aria",
-  "version": "0.2.7",
+  "version": "0.2.8",
   "exports": "./src/main.ts",
   "tasks": {
     "start": "deno run --allow-net --allow-env --allow-read --allow-write --allow-run --allow-sys --allow-ffi --allow-import src/main.ts",

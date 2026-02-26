@@ -22,7 +22,7 @@ export async function sendMessage(message: string): Promise<boolean> {
   }
 
   try {
-    await botInstance.api.sendMessage(chatId, message);
+    await botInstance.api.sendMessage(chatId, message, { parse_mode: "MarkdownV2" });
     return true;
   } catch (error) {
     console.error("Failed to send message:", error);
@@ -37,7 +37,7 @@ export async function sendMessageToChat(chatId: number, message: string): Promis
   }
 
   try {
-    await botInstance.api.sendMessage(chatId, message);
+    await botInstance.api.sendMessage(chatId, message, { parse_mode: "MarkdownV2" });
     return true;
   } catch (error) {
     console.error("Failed to send message:", error);

@@ -2,6 +2,7 @@ import type { Context } from "grammy";
 import type { Bot } from "grammy";
 import { InputFile } from "grammy";
 import type { Config } from "../../config/mod.ts";
+import { escapeMarkdownV2, escapeMarkdownV2CodeBlock } from "../utils.ts";
 import {
   createSkill,
   getAllSkills,
@@ -30,10 +31,10 @@ export function createSkillHandlers(config: Config) {
       }
 
       const list = skills
-        .map((s, i) => `${i + 1}. *${s.name}*\n   ${s.description.slice(0, 100)}${s.description.length > 100 ? "..." : ""}`)
+        .map((s, i) => `${i + 1}\\. *${escapeMarkdownV2(s.name)}*\n   ${escapeMarkdownV2(s.description.slice(0, 100))}${s.description.length > 100 ? "\\\\.\\.\\." : ""}`)
         .join("\n\n");
 
-      await ctx.reply(`*Available Skills:*\n\n${list}`, { parse_mode: "Markdown" });
+      await ctx.reply(`*Available Skills:*\n\n${list}`, { parse_mode: "MarkdownV2" });
     },
 
     showSkill: async (ctx: Context, name: string): Promise<void> => {
@@ -48,9 +49,9 @@ export function createSkillHandlers(config: Config) {
       const markdown = skillToMarkdown(definition);
 
       if (markdown.length > 4000) {
-        await ctx.reply(`*${skill.name}*\n\n${skill.description}\n\n_Code too long to display. Use /exportskill ${skill.name} to get the full file._`, { parse_mode: "Markdown" });
+        await ctx.reply(`*${escapeMarkdownV2(skill.name)}*\n\n${escapeMarkdownV2(skill.description)}\n\n_Code too long to display\\. Use /exportskill ${escapeMarkdownV2(skill.name)} to get the full file\\._`, { parse_mode: "MarkdownV2" });
       } else {
-        await ctx.reply(`\`\`\`markdown\n${markdown}\n\`\`\``, { parse_mode: "Markdown" });
+        await ctx.reply(`\`\`\`\n${escapeMarkdownV2CodeBlock(markdown)}\n\`\`\``, { parse_mode: "MarkdownV2" });
       }
     },
 
@@ -80,9 +81,9 @@ export function createSkillHandlers(config: Config) {
         const output = typeof result.output === "object"
           ? JSON.stringify(result.output, null, 2)
           : String(result.output);
-        await ctx.reply(`*Result* (${result.duration}ms):\n\`\`\`\n${output}\n\`\`\``, { parse_mode: "Markdown" });
+        await ctx.reply(`*Result* \\(${result.duration}ms\\):\n\`\`\`\n${escapeMarkdownV2CodeBlock(output)}\n\`\`\``, { parse_mode: "MarkdownV2" });
       } else {
-        await ctx.reply(`*Error* (${result.duration}ms):\n${result.error}`, { parse_mode: "Markdown" });
+        await ctx.reply(`*Error* \\(${result.duration}ms\\):\n${escapeMarkdownV2(result.error || "Unknown error")}`, { parse_mode: "MarkdownV2" });
       }
     },
 
@@ -190,7 +191,7 @@ export function createSkillHandlers(config: Config) {
       }
 
       const created = createSkill(result.skill);
-      await ctx.reply(`Skill "${created.name}" created successfully!\n\n*Description:* ${created.description}`, { parse_mode: "Markdown" });
+      await ctx.reply(`Skill "${escapeMarkdownV2(created.name)}" created successfully\\!\n\n*Description:* ${escapeMarkdownV2(created.description)}`, { parse_mode: "MarkdownV2" });
     },
 
     deleteSkill: async (ctx: Context, name: string): Promise<void> => {

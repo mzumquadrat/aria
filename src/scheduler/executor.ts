@@ -53,7 +53,7 @@ async function executeNotificationTask(
   chatId: number
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    await bot.api.sendMessage(chatId, payload.message);
+    await bot.api.sendMessage(chatId, payload.message, { parse_mode: "MarkdownV2" });
     return { success: true };
   } catch (error) {
     return { 
@@ -86,9 +86,9 @@ async function executeSkillTask(
       const outputStr = typeof result.output === "string" 
         ? result.output 
         : JSON.stringify(result.output, null, 2);
-      await bot.api.sendMessage(chatId, `Skill "${payload.skillName}" completed:\n${outputStr}`);
+      await bot.api.sendMessage(chatId, `Skill "${payload.skillName}" completed:\n${outputStr}`, { parse_mode: "MarkdownV2" });
     } else if (!result.success) {
-      await bot.api.sendMessage(chatId, `Skill "${payload.skillName}" failed: ${result.error || "Unknown error"}`);
+      await bot.api.sendMessage(chatId, `Skill "${payload.skillName}" failed: ${result.error || "Unknown error"}`, { parse_mode: "MarkdownV2" });
     }
 
     return { success: result.success, ...(result.error && { error: result.error }) };
@@ -118,7 +118,7 @@ async function executeAgentTask(
 
     const response = await agent.processMessage(fullPrompt);
     
-    await bot.api.sendMessage(chatId, response);
+    await bot.api.sendMessage(chatId, response, { parse_mode: "MarkdownV2" });
 
     return { success: true };
   } catch (error) {

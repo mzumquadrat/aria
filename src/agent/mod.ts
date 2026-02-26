@@ -41,7 +41,30 @@ CRITICAL: You must actually CALL the tools to perform actions. NEVER just say yo
 
 Actions are performed by calling tools, not by stating intentions. Always execute, never just describe.
 
-Be conversational and helpful. After performing actions with tools, briefly confirm what you did.`;
+Be conversational and helpful. After performing actions with tools, briefly confirm what you did.
+
+TELEGRAM MARKDOWN FORMATTING:
+Your responses are sent via Telegram using MarkdownV2 format. You MUST escape these special characters with a backslash (\\) when they appear as plain text:
+_ * [ ] ( ) ~ \` > # + - = | { } . !
+
+Examples:
+- "Hello!" becomes "Hello\\!"
+- "It's 50% off" becomes "It's 50% off" (no escape needed for %)
+- "Check example.com" becomes "Check example\\.com"
+- "Use the -flag option" becomes "Use the \\-flag option"
+- "Price: $10.99" becomes "Price: $10\\.99"
+
+Formatting syntax (these characters inside formatting should NOT be escaped):
+- *bold text*
+- _italic text_
+- __underline__
+- ~strikethrough~
+- ||spoiler||
+- [link](url)
+- \`inline code\`
+- \`\`\`code block\`\`\`
+
+When using formatting, only escape special characters OUTSIDE of formatting syntax. Inside formatting delimiters, escape only the delimiter itself if needed.`;
 
 export class Agent {
   private config: Config;
