@@ -23,6 +23,7 @@ export const ElevenLabsConfigSchema = z.object({
   apiKey: z.string().min(1, "ElevenLabs API key is required"),
   voiceId: z.string().default("21m00Tcm4TlvDq8ikWAM"),
   modelId: z.string().default("eleven_multilingual_v2"),
+  sttModelId: z.string().default("scribe_v1"),
 });
 
 export const BraveSearchConfigSchema = z.object({

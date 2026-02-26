@@ -40,6 +40,7 @@ function loadFromEnv(): Record<string, unknown> {
       apiKey: Deno.env.get("ELEVENLABS_API_KEY"),
       voiceId: Deno.env.get("ELEVENLABS_VOICE_ID"),
       modelId: Deno.env.get("ELEVENLABS_MODEL_ID"),
+      sttModelId: Deno.env.get("ELEVENLABS_STT_MODEL_ID"),
     },
     brave: {
       apiKey: Deno.env.get("BRAVE_API_KEY"),

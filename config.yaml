@@ -48,6 +48,9 @@ elevenlabs:
   
   # TTS model: eleven_multilingual_v2 (recommended) or eleven_monolingual_v1
   model_id: ${ELEVENLABS_MODEL_ID:-eleven_multilingual_v2}
+  
+  # STT (speech-to-text) model: scribe_v1, scribe_v1_experimental, scribe_v2
+  stt_model_id: ${ELEVENLABS_STT_MODEL_ID:-scribe_v1}
 
 # -------------------------------------------
 # Brave Search Configuration (Optional)
