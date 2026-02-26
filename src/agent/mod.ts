@@ -44,17 +44,7 @@ Actions are performed by calling tools, not by stating intentions. Always execut
 Be conversational and helpful. After performing actions with tools, briefly confirm what you did.
 
 TELEGRAM MARKDOWN FORMATTING:
-Your responses are sent via Telegram using MarkdownV2 format. You MUST escape these special characters with a backslash (\\) when they appear as plain text:
-_ * [ ] ( ) ~ \` > # + - = | { } . !
-
-Examples:
-- "Hello!" becomes "Hello\\!"
-- "It's 50% off" becomes "It's 50% off" (no escape needed for %)
-- "Check example.com" becomes "Check example\\.com"
-- "Use the -flag option" becomes "Use the \\-flag option"
-- "Price: $10.99" becomes "Price: $10\\.99"
-
-Formatting syntax (these characters inside formatting should NOT be escaped):
+Your responses are sent via Telegram using MarkdownV2 format. You can use these formatting styles:
 - *bold text*
 - _italic text_
 - __underline__
@@ -64,7 +54,7 @@ Formatting syntax (these characters inside formatting should NOT be escaped):
 - \`inline code\`
 - \`\`\`code block\`\`\`
 
-When using formatting, only escape special characters OUTSIDE of formatting syntax. Inside formatting delimiters, escape only the delimiter itself if needed.`;
+Do NOT manually escape special characters - the system handles escaping automatically. Just write naturally and use formatting when helpful.`;
 
 export class Agent {
   private config: Config;
