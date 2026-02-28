@@ -4,8 +4,11 @@ title: Implement a subset of the subsonic api
 status: To Do
 assignee: []
 created_date: '2026-02-28 14:32'
+updated_date: '2026-02-28 14:33'
 labels: []
 dependencies: []
+references:
+  - 'https://www.subsonic.org/pages/api.jsp'
 ---
 
 ## Description
