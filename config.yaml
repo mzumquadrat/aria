@@ -193,3 +193,37 @@ logging:
 database:
   # Path to SQLite database (stores memories, skills, etc.)
   path: ${DATABASE_PATH:-./data/aria.db}
+
+# -------------------------------------------
+# Subsonic Music Server (Optional)
+# -------------------------------------------
+# Enable music library integration for playlist creation
+subsonic:
+  # Server URL (e.g., http://your-server:4533)
+  server_url: ${SUBSONIC_SERVER_URL:-}
+  
+  # Username for Subsonic
+  username: ${SUBSONIC_USERNAME:-}
+  
+  # Password for Subsonic
+  password: ${SUBSONIC_PASSWORD:-}
+  
+  # Prefix for playlists created by Aria
+  default_playlist_prefix: "${SUBSONIC_DEFAULT_PLAYLIST_PREFIX:-Aria: }"
+
+# -------------------------------------------
+# Last.fm Integration (Optional)
+# -------------------------------------------
+# Enhances music features with mood tags and recommendations
+lastfm:
+  # API key from https://www.last.fm/api/account/create
+  api_key: ${LASTFM_API_KEY:-}
+  
+  # Your Last.fm username (optional, enables personalized recommendations)
+  username: ${LASTFM_USERNAME:-}
+  
+  # Days to cache tag data (reduces API calls)
+  cache_expiry_days: 7
+  
+  # Max API calls per second (Last.fm limit is 5)
+  rate_limit_per_second: 4
