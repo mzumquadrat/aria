@@ -1,3 +1,5 @@
+import { crypto } from "@std/crypto";
+import { encodeHex } from "@std/encoding/hex";
 import type {
   SubsonicConfig,
   SubsonicArtist,
@@ -56,8 +58,7 @@ export class SubsonicService {
   private async md5(message: string): Promise<string> {
     const msgBuffer = new TextEncoder().encode(message);
     const hashBuffer = await crypto.subtle.digest("MD5", msgBuffer);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+    return encodeHex(hashBuffer);
   }
 
   private generateToken(password: string, salt: string): Promise<string> {

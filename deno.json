@@ -1,6 +1,6 @@
 {
   "name": "@mzumquadrat/aria",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "exports": "./src/main.ts",
   "tasks": {
     "start": "deno run --allow-net --allow-env --allow-read --allow-write --allow-run --allow-sys --allow-ffi --allow-import src/main.ts",
@@ -20,7 +20,9 @@
     "@grammyjs/types": "jsr:@grammyjs/types@^3.14.0",
     "@std/assert": "jsr:@std/assert@^1.0.6",
     "@std/async": "jsr:@std/async@^1.0.5",
+    "@std/crypto": "jsr:@std/crypto@^1.0.5",
     "@std/dotenv": "jsr:@std/dotenv@^0.225.6",
+    "@std/encoding": "jsr:@std/encoding@^1.0.10",
     "@std/fs": "jsr:@std/fs@^1.0.4",
     "@std/path": "jsr:@std/path@^1.1.4",
     "@std/testing": "jsr:@std/testing@^1.0.4",
