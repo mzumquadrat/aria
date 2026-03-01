@@ -373,50 +373,84 @@ export class ToolRegistry {
   async executeTool(call: ToolCall): Promise<ToolResult> {
     const { tool, input } = call;
 
+    let result: ToolResult;
+
     if (tool.startsWith("skill_")) {
-      return await this.executeSkillTool(tool, input);
+      result = await this.executeSkillTool(tool, input);
+    } else {
+      switch (tool) {
+        case "web_search":
+          result = await this.executeWebSearch(input as { query: string });
+          break;
+        case "get_time":
+          result = this.executeGetTime();
+          break;
+        case "calculate":
+          result = this.executeCalculate(input as { expression: string });
+          break;
+        case "remember":
+          result = this.executeRemember(input as { content: string; category?: string });
+          break;
+        case "recall":
+          result = this.executeRecall(input as { query: string });
+          break;
+        case "schedule_task":
+          result = this.executeScheduleTask(input as ScheduleTaskInput);
+          break;
+        case "list_scheduled_tasks":
+          result = this.executeListTasks(input as { status?: string; limit?: number });
+          break;
+        case "cancel_task":
+          result = this.executeCancelTask(input as { taskId: string });
+          break;
+        case "list_calendars":
+          result = await this.executeListCalendars();
+          break;
+        case "get_calendar_events":
+          result = await this.executeGetCalendarEvents(input as { startDate?: string; endDate?: string; days?: number; calendar?: string });
+          break;
+        case "create_calendar_event":
+          result = await this.executeCreateCalendarEvent(input as { summary: string; start: string; end: string; description?: string; location?: string; timezone?: string; calendar?: string });
+          break;
+        case "update_calendar_event":
+          result = await this.executeUpdateCalendarEvent(input as { eventUrl: string; etag: string; summary: string; start: string; end: string; description?: string; location?: string; timezone?: string; calendar?: string });
+          break;
+        case "delete_calendar_event":
+          result = await this.executeDeleteCalendarEvent(input as { eventUrl: string; etag: string; confirm: boolean });
+          break;
+        case "search_music":
+          result = await this.executeSearchMusic(input as { query: string; songCount?: number; albumCount?: number; artistCount?: number });
+          break;
+        case "get_music_library_info":
+          result = await this.executeGetMusicLibraryInfo(input as { type?: string });
+          break;
+        case "list_playlists":
+          result = await this.executeListPlaylists(input as { includeSongs?: boolean });
+          break;
+        case "manage_playlist":
+          result = await this.executeManagePlaylist(input as { action: string; playlistId?: string; name?: string; songIds?: string[]; songIdsToAdd?: string[]; comment?: string; isPublic?: boolean; confirm?: boolean });
+          break;
+        case "create_smart_playlist":
+          result = await this.executeCreateSmartPlaylist(input as { name: string; mood?: string; genre?: string; artist?: string; album?: string; fromYear?: number; toYear?: number; songCount?: number; includeUserFavorites?: boolean; discoverNew?: boolean; minTagMatch?: number });
+          break;
+        default:
+          result = { tool, success: false, error: `Unknown tool: ${tool}` };
+      }
     }
 
-    switch (tool) {
-      case "web_search":
-        return await this.executeWebSearch(input as { query: string });
-      case "get_time":
-        return this.executeGetTime();
-      case "calculate":
-        return this.executeCalculate(input as { expression: string });
-      case "remember":
-        return this.executeRemember(input as { content: string; category?: string });
-      case "recall":
-        return this.executeRecall(input as { query: string });
-      case "schedule_task":
-        return this.executeScheduleTask(input as ScheduleTaskInput);
-      case "list_scheduled_tasks":
-        return this.executeListTasks(input as { status?: string; limit?: number });
-      case "cancel_task":
-        return this.executeCancelTask(input as { taskId: string });
-      case "list_calendars":
-        return await this.executeListCalendars();
-      case "get_calendar_events":
-        return await this.executeGetCalendarEvents(input as { startDate?: string; endDate?: string; days?: number; calendar?: string });
-      case "create_calendar_event":
-        return await this.executeCreateCalendarEvent(input as { summary: string; start: string; end: string; description?: string; location?: string; timezone?: string; calendar?: string });
-      case "update_calendar_event":
-        return await this.executeUpdateCalendarEvent(input as { eventUrl: string; etag: string; summary: string; start: string; end: string; description?: string; location?: string; timezone?: string; calendar?: string });
-      case "delete_calendar_event":
-        return await this.executeDeleteCalendarEvent(input as { eventUrl: string; etag: string; confirm: boolean });
-      case "search_music":
-        return await this.executeSearchMusic(input as { query: string; songCount?: number; albumCount?: number; artistCount?: number });
-      case "get_music_library_info":
-        return await this.executeGetMusicLibraryInfo(input as { type?: string });
-      case "list_playlists":
-        return await this.executeListPlaylists(input as { includeSongs?: boolean });
-      case "manage_playlist":
-        return await this.executeManagePlaylist(input as { action: string; playlistId?: string; name?: string; songIds?: string[]; songIdsToAdd?: string[]; comment?: string; isPublic?: boolean; confirm?: boolean });
-      case "create_smart_playlist":
-        return await this.executeCreateSmartPlaylist(input as { name: string; mood?: string; genre?: string; artist?: string; album?: string; fromYear?: number; toYear?: number; songCount?: number; includeUserFavorites?: boolean; discoverNew?: boolean; minTagMatch?: number });
-      default:
-        return { tool, success: false, error: `Unknown tool: ${tool}` };
+    if (result.success) {
+      console.log(`[TOOL RESULT] ${tool}: success`);
+      if (result.output !== undefined) {
+        const outputStr = typeof result.output === "string" 
+          ? result.output 
+          : JSON.stringify(result.output, null, 2);
+        console.log(`[TOOL OUTPUT] ${outputStr}`);
+      }
+    } else {
+      console.log(`[TOOL ERROR] ${tool}: ${result.error}`);
     }
+
+    return result;
   }
 
   private async executeSkillTool(tool: string, input: unknown): Promise<ToolResult> {

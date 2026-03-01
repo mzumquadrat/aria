@@ -114,6 +114,7 @@ export class Agent {
 
       if (llmResponse.content) {
         response = llmResponse.content;
+        console.log(`[ARIA] ${response}`);
         this.addToHistory({ role: "assistant", content: response });
       }
     }
@@ -184,6 +185,9 @@ export class Agent {
     } catch {
       input = {};
     }
+
+    console.log(`[TOOL CALL] ${toolName}`);
+    console.log(`[TOOL INPUT] ${JSON.stringify(input, null, 2)}`);
 
     return toolRegistry.executeTool({ tool: toolName, input });
   }
