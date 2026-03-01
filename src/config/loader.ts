@@ -70,6 +70,22 @@ function loadFromEnv(): Record<string, unknown> {
     logging: {
       level: Deno.env.get("LOG_LEVEL") as "debug" | "info" | "warn" | "error" | undefined,
     },
+    subsonic: Deno.env.get("SUBSONIC_SERVER_URL") ? {
+      serverUrl: Deno.env.get("SUBSONIC_SERVER_URL"),
+      username: Deno.env.get("SUBSONIC_USERNAME"),
+      password: Deno.env.get("SUBSONIC_PASSWORD"),
+      defaultPlaylistPrefix: Deno.env.get("SUBSONIC_DEFAULT_PLAYLIST_PREFIX"),
+    } : undefined,
+    lastfm: Deno.env.get("LASTFM_API_KEY") ? {
+      apiKey: Deno.env.get("LASTFM_API_KEY"),
+      username: Deno.env.get("LASTFM_USERNAME"),
+      cacheExpiryDays: Deno.env.get("LASTFM_CACHE_EXPIRY_DAYS") 
+        ? parseInt(Deno.env.get("LASTFM_CACHE_EXPIRY_DAYS")!, 10) 
+        : undefined,
+      rateLimitPerSecond: Deno.env.get("LASTFM_RATE_LIMIT") 
+        ? parseInt(Deno.env.get("LASTFM_RATE_LIMIT")!, 10) 
+        : undefined,
+    } : undefined,
   };
 }
 
