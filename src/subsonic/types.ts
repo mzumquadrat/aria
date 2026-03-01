@@ -100,13 +100,15 @@ export interface SubsonicError {
   message: string;
 }
 
-export interface SubsonicResponse<T> {
+export interface SubsonicResponse {
   status: "ok" | "failed";
   version: string;
-  type: string;
-  serverVersion: string;
+  type?: string;
+  serverVersion?: string;
+  openSubsonic?: boolean;
   error?: SubsonicError;
-  data?: T;
+  // Response data is spread directly on this object, not in a "data" property
+  [key: string]: unknown;
 }
 
 export interface SubsonicConfig {

@@ -65,10 +65,10 @@ export class SubsonicService {
     return this.md5(password + salt);
   }
 
-  private async request<T>(
+  private async request<T extends Record<string, unknown>>(
     endpoint: string,
     params: Record<string, string | number | undefined> = {}
-  ): Promise<T> {
+  ): Promise<SubsonicResponse & T> {
     const authParams = await this.generateAuthParams();
     const url = new URL(`${this.serverUrl}/rest/${endpoint}`);
     
@@ -89,7 +89,7 @@ export class SubsonicService {
     }
 
     const data = await response.json();
-    const subsonicResponse = data["subsonic-response"] as SubsonicResponse<T>;
+    const subsonicResponse = data["subsonic-response"] as SubsonicResponse & T;
 
     if (subsonicResponse.status === "failed") {
       const errorCode = subsonicResponse.error?.code ?? 0;
@@ -97,7 +97,7 @@ export class SubsonicService {
       throw new Error(`Subsonic error ${errorCode}: ${errorMsg}`);
     }
 
-    return subsonicResponse.data as T;
+    return subsonicResponse;
   }
 
   async ping(): Promise<boolean> {
