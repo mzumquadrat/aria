@@ -31,6 +31,10 @@ openrouter:
   # Fallback model if primary fails
   fallback_model: openai/gpt-4o-mini
   
+  # Maximum tokens for LLM responses (default: 4096)
+  # Increase for longer responses, decrease to save costs
+  max_tokens: ${OPENROUTER_MAX_TOKENS:-4096}
+  
   # HTTP referer for OpenRouter analytics (optional)
   http_referer: ${HTTP_REFERER:-https://github.com/mzumquadrat/aria}
 

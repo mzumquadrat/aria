@@ -57,6 +57,7 @@ export const OpenRouterConfigSchema = z.object({
   defaultModel: z.string().default("anthropic/claude-sonnet-4"),
   fallbackModel: z.string().default("openai/gpt-4o-mini"),
   httpReferer: z.string().optional(),
+  maxTokens: z.number().int().positive().default(4096),
 });
 
 export const ApprovalConfigSchema = z.object({

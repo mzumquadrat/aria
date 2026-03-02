@@ -147,11 +147,14 @@ export class Agent {
         messages: this.conversationHistory,
         tools: this.getToolsSchema(),
         tool_choice: "auto",
+        max_tokens: this.config.openrouter.maxTokens,
       }),
     });
 
     if (!response.ok) {
-      throw new Error(`LLM request failed: ${response.status}`);
+      const errorBody = await response.text();
+      console.error(`[LLM ERROR] Status: ${response.status}, Body: ${errorBody}`);
+      throw new Error(`LLM request failed: ${response.status} - ${errorBody}`);
     }
 
     const data = await response.json();
