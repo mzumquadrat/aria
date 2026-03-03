@@ -4,6 +4,7 @@ import { getAgent } from "../agent/mod.ts";
 import { skillRecordToDefinition, executeSkill } from "../skills/mod.ts";
 import { getSkillByName } from "../skills/repository.ts";
 import type { Config } from "../config/mod.ts";
+import { escapeMarkdownV2 } from "../bot/mod.ts";
 
 export interface ExecutorContext {
   bot: Bot;
@@ -53,7 +54,7 @@ async function executeNotificationTask(
   chatId: number
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    await bot.api.sendMessage(chatId, payload.message, { parse_mode: "MarkdownV2" });
+    await bot.api.sendMessage(chatId, escapeMarkdownV2(payload.message), { parse_mode: "MarkdownV2" });
     return { success: true };
   } catch (error) {
     return { 
@@ -86,9 +87,9 @@ async function executeSkillTask(
       const outputStr = typeof result.output === "string" 
         ? result.output 
         : JSON.stringify(result.output, null, 2);
-      await bot.api.sendMessage(chatId, `Skill "${payload.skillName}" completed:\n${outputStr}`, { parse_mode: "MarkdownV2" });
+      await bot.api.sendMessage(chatId, escapeMarkdownV2(`Skill "${payload.skillName}" completed:\n${outputStr}`), { parse_mode: "MarkdownV2" });
     } else if (!result.success) {
-      await bot.api.sendMessage(chatId, `Skill "${payload.skillName}" failed: ${result.error || "Unknown error"}`, { parse_mode: "MarkdownV2" });
+      await bot.api.sendMessage(chatId, escapeMarkdownV2(`Skill "${payload.skillName}" failed: ${result.error || "Unknown error"}`), { parse_mode: "MarkdownV2" });
     }
 
     return { success: result.success, ...(result.error && { error: result.error }) };
@@ -118,7 +119,7 @@ async function executeAgentTask(
 
     const response = await agent.processMessage(fullPrompt);
     
-    await bot.api.sendMessage(chatId, response, { parse_mode: "MarkdownV2" });
+    await bot.api.sendMessage(chatId, escapeMarkdownV2(response), { parse_mode: "MarkdownV2" });
 
     return { success: true };
   } catch (error) {
