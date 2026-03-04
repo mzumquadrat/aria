@@ -10,7 +10,7 @@ import type {
   GetContentInput,
   NavigateInput,
   NewTabInput,
-  ScreenshotInput,
+  // ScreenshotInput,
   ScrollInput,
   SelectInput,
   SwitchTabInput,
@@ -81,19 +81,19 @@ export const browserSelectTool: Tool = {
   },
 };
 
-export const browserScreenshotTool: Tool = {
-  type: "builtin",
-  name: "browser_screenshot",
-  description: "Take a screenshot of the current page or a specific element. Returns base64 encoded image for visual analysis.",
-  inputSchema: {
-    type: "object",
-    properties: {
-      selector: { type: "string", description: "CSS selector to capture a specific element (optional)" },
-      quality: { type: "number", description: "JPEG quality 1-100 (default: 80)" },
-      fullPage: { type: "boolean", description: "Capture the full scrollable page" },
-    },
-  },
-};
+// export const browserScreenshotTool: Tool = {
+//   type: "builtin",
+//   name: "browser_screenshot",
+//   description: "Take a screenshot of the current page or a specific element. Returns base64 encoded image for visual analysis.",
+//   inputSchema: {
+//     type: "object",
+//     properties: {
+//       selector: { type: "string", description: "CSS selector to capture a specific element (optional)" },
+//       quality: { type: "number", description: "JPEG quality 1-100 (default: 80)" },
+//       fullPage: { type: "boolean", description: "Capture the full scrollable page" },
+//     },
+//   },
+// };
 
 export const browserGetContentTool: Tool = {
   type: "builtin",
@@ -229,12 +229,22 @@ export const browserCloseTabTool: Tool = {
   },
 };
 
+export const browserReconnectTool: Tool = {
+  type: "builtin",
+  name: "browser_reconnect",
+  description: "Reconnect to the browser after a connection loss. Use this when the browser is still running but the connection was dropped.",
+  inputSchema: {
+    type: "object",
+    properties: {},
+  },
+};
+
 export const BROWSER_TOOLS: Tool[] = [
   browserNavigateTool,
   browserClickTool,
   browserTypeTool,
   browserSelectTool,
-  browserScreenshotTool,
+  // browserScreenshotTool,
   browserGetContentTool,
   browserExtractTextTool,
   browserExtractLinksTool,
@@ -245,6 +255,7 @@ export const BROWSER_TOOLS: Tool[] = [
   browserSwitchTabTool,
   browserNewTabTool,
   browserCloseTabTool,
+  browserReconnectTool,
 ];
 
 export class BrowserToolExecutor {
@@ -288,8 +299,8 @@ export class BrowserToolExecutor {
         case "browser_select":
           return await this.executeSelect(input as unknown as SelectInput);
 
-        case "browser_screenshot":
-          return await this.executeScreenshot(input as unknown as ScreenshotInput);
+        // case "browser_screenshot":
+        //   return await this.executeScreenshot(input as unknown as ScreenshotInput);
 
         case "browser_get_content":
           return await this.executeGetContent(input as unknown as GetContentInput);
@@ -320,6 +331,9 @@ export class BrowserToolExecutor {
 
         case "browser_close_tab":
           return await this.executeCloseTab(input as unknown as CloseTabInput);
+
+        case "browser_reconnect":
+          return await this.executeReconnect();
 
         default:
           return { success: false, error: `Unknown browser tool: ${tool}` };
@@ -358,18 +372,18 @@ export class BrowserToolExecutor {
     return { success: true, output: result };
   }
 
-  private async executeScreenshot(input: ScreenshotInput): Promise<{ success: boolean; output?: unknown }> {
-    const result = await this.page.screenshot(input);
-    return {
-      success: true,
-      output: {
-        data: result.data,
-        mimeType: result.mimeType,
-        width: result.width,
-        height: result.height,
-      },
-    };
-  }
+  // private async executeScreenshot(input: ScreenshotInput): Promise<{ success: boolean; output?: unknown }> {
+  //   const result = await this.page.screenshot(input);
+  //   return {
+  //     success: true,
+  //     output: {
+  //       data: result.data,
+  //       mimeType: result.mimeType,
+  //       width: result.width,
+  //       height: result.height,
+  //     },
+  //   };
+  // }
 
   private async executeGetContent(input: GetContentInput): Promise<{ success: boolean; output?: unknown }> {
     const result = await this.page.getContent(input);
@@ -419,5 +433,25 @@ export class BrowserToolExecutor {
   private async executeCloseTab(input: CloseTabInput): Promise<{ success: boolean; output?: unknown }> {
     await this.session.closeTab(input.tabId);
     return { success: true, output: { closed: true, tabId: input.tabId } };
+  }
+
+  async executeReconnect(): Promise<{ success: boolean; output?: unknown; error?: string }> {
+    try {
+      await this.session.reconnect();
+      const tabs = this.session.listTabs();
+      return {
+        success: true,
+        output: {
+          reconnected: true,
+          activeTab: tabs.find((t) => t.isActive) ?? null,
+          tabCount: tabs.length,
+        },
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Reconnect failed",
+      };
+    }
   }
 }

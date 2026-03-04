@@ -17,6 +17,7 @@ export interface BrowserService {
   approvalManager: ApprovalManager;
   connect(): Promise<void>;
   disconnect(): void;
+  reconnect(): Promise<void>;
   isReady(): boolean;
 }
 
@@ -34,6 +35,9 @@ function createBrowserService(config: BrowserConfig): BrowserService {
     },
     disconnect(): void {
       session.disconnect();
+    },
+    async reconnect(): Promise<void> {
+      await session.reconnect();
     },
     isReady(): boolean {
       return session.connected;

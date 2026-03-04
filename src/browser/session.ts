@@ -24,7 +24,12 @@ export class BrowserSession {
 
   async connect(): Promise<void> {
     await this.client.connect();
+    this.setupEventHandlers();
+    await this.discoverAndAttachTargets();
+    this.initialConnect = false;
+  }
 
+  private setupEventHandlers(): void {
     this.client.on("Target.targetCreated", (event) => {
       if (event.params && "targetInfo" in event.params) {
         const info = event.params.targetInfo as TargetInfo;
@@ -44,7 +49,9 @@ export class BrowserSession {
         this.targets.set(info.targetId, info);
       }
     });
+  }
 
+  private async discoverAndAttachTargets(): Promise<void> {
     await this.client.send("Target.setDiscoverTargets", { discover: true });
 
     const result = await this.client.send<{ targetInfos: TargetInfo[] }>("Target.getTargets");
@@ -57,8 +64,22 @@ export class BrowserSession {
       this.activeTargetId = pageTarget.targetId;
       await this.enablePageDomains();
     }
+  }
+
+  async reconnect(): Promise<void> {
+    const previousTargetId = this.activeTargetId;
     
-    this.initialConnect = false;
+    this.activeTargetId = null;
+    this.sessionId = null;
+    this.targets.clear();
+
+    await this.client.reconnect();
+    this.setupEventHandlers();
+    await this.discoverAndAttachTargets();
+
+    if (previousTargetId && this.targets.has(previousTargetId)) {
+      await this.attachToTarget(previousTargetId);
+    }
   }
 
   private async enablePageDomains(): Promise<void> {

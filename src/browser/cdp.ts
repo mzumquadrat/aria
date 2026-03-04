@@ -115,6 +115,17 @@ export class CDPClient {
     this.rejectAllPending("Client disconnected");
   }
 
+  async reconnect(): Promise<void> {
+    this.stopKeepalive();
+    if (this.ws) {
+      this.ws.close();
+      this.ws = null;
+      this.isConnected = false;
+    }
+    this.rejectAllPending("Connection reset for reconnect");
+    await this.connect();
+  }
+
   private startKeepalive(): void {
     if (this.keepaliveInterval !== null) {
       return;
