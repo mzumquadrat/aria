@@ -1,5 +1,5 @@
-import { loadConfig, validateConfig } from "./config/mod.ts";
-import { closeDatabase, initializeDatabase } from "./storage/mod.ts";
+import { loadConfig, validateConfig, type Config } from "./config/mod.ts";
+import { closeDatabase, initializeDatabase, initializeAsyncDatabase, getDatabase } from "./storage/mod.ts";
 import { createBot, setupBot, startBot, stopBot } from "./bot/mod.ts";
 import { createElevenLabsService } from "./elevenlabs/mod.ts";
 import { createBraveSearchService } from "./brave/mod.ts";
@@ -10,6 +10,7 @@ import { getMemoryRepository } from "./storage/memory/mod.ts";
 import { getScheduler, initializeScheduler } from "./scheduler/mod.ts";
 import { initializeMessaging } from "./bot/messaging.ts";
 import { createShellEnvironment } from "./shell/mod.ts";
+import { initializeMessageQueue, getMessageQueue, waitForQueueCompletion } from "./queue/mod.ts";
 
 let isShuttingDown = false;
 
@@ -23,6 +24,9 @@ async function main(): Promise<void> {
 
   await initializeDatabase({ path: config.database?.path || "./data/aria.db" });
   console.log("Database initialized");
+
+  initializeAsyncDatabase(getDatabase());
+  console.log("Async database layer initialized");
 
   initializeAgent(config);
   console.log("Agent initialized");
@@ -73,6 +77,9 @@ async function main(): Promise<void> {
 
   initializeMessaging(bot, config);
 
+  initializeMessageQueue(config, bot);
+  console.log("Message queue initialized");
+
   const schedulerConfig = {
     checkInterval: config.scheduler?.checkInterval ?? 1000,
     maxConcurrent: config.scheduler?.maxConcurrent ?? 5,
@@ -82,13 +89,13 @@ async function main(): Promise<void> {
   scheduler.start();
   console.log("Scheduler started");
 
-  setupShutdownHandlers(bot);
+  setupShutdownHandlers(bot, config);
 
   await startBot(bot);
 }
 
-function setupShutdownHandlers(bot: ReturnType<typeof createBot>): void {
-  const shutdown = async () => {
+function setupShutdownHandlers(bot: ReturnType<typeof createBot>, config: Config): void {
+  const shutdown = () => {
     if (isShuttingDown) return;
     isShuttingDown = true;
 
@@ -99,15 +106,34 @@ function setupShutdownHandlers(bot: ReturnType<typeof createBot>): void {
       scheduler.stop();
     }
 
-    stopBot(bot);
-    closeDatabase();
+    const shutdownTimeout = config.queue?.shutdownTimeout ?? 30000;
 
-    console.log("Goodbye!");
-    Deno.exit(0);
+    try {
+      const messageQueue = getMessageQueue();
+      messageQueue.stop();
+      console.log("Message queue stopped, waiting for running tasks...");
+
+      waitForQueueCompletion(shutdownTimeout).then(() => {
+        console.log("All tasks completed");
+        finishShutdown(bot);
+      }).catch((error) => {
+        console.error("Error waiting for tasks:", error);
+        finishShutdown(bot);
+      });
+    } catch {
+      finishShutdown(bot);
+    }
   };
 
   Deno.addSignalListener("SIGINT", shutdown);
   Deno.addSignalListener("SIGTERM", shutdown);
+}
+
+function finishShutdown(bot: ReturnType<typeof createBot>): void {
+  stopBot(bot);
+  closeDatabase();
+  console.log("Goodbye!");
+  Deno.exit(0);
 }
 
 if (import.meta.main) {

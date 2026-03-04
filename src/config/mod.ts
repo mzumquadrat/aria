@@ -6,6 +6,7 @@ export type {
   OpenRouterConfig,
   ApprovalConfig,
   SchedulerConfig,
+  QueueConfig,
   LoggingConfig,
 } from "./types.ts";
 export { ConfigSchema } from "./types.ts";

@@ -1,5 +1,5 @@
 import type { Context } from "grammy";
-import { getAgent } from "../../agent/mod.ts";
+import { enqueueMessage, getMessageQueue } from "../../queue/mod.ts";
 
 const TOOL_REACTIONS: Record<string, "👀" | "🤔" | "👍" | "⚡"> = {
   web_search: "👀",
@@ -31,39 +31,67 @@ export async function handleMessage(ctx: Context): Promise<void> {
     return;
   }
 
-  const agent = getAgent();
-  
-  if (!agent) {
-    await ctx.reply("Agent not initialized. Please check configuration.");
-    return;
-  }
-
-  const toolReactions: ("👀" | "🤔" | "👍" | "⚡")[] = [];
-  
-  agent.setToolCallCallback((toolName: string) => {
-    const reaction = getToolReaction(toolName);
-    toolReactions.push(reaction);
-    ctx.api.sendChatAction(ctx.chat!.id, "typing").catch(() => {});
-  });
-
   try {
-    await ctx.api.sendChatAction(ctx.chat!.id, "typing");
+    const queue = getMessageQueue();
+    const stats = queue.getStats();
     
-    const response = await agent.processMessage(message);
-    
-    if (toolReactions.length > 0) {
-      try {
-        await ctx.react(toolReactions[toolReactions.length - 1]);
-      } catch {
-        // Reaction might not be supported or message too old
-      }
+    const task = enqueueMessage(message, {
+      chatId: ctx.chat!.id,
+      userId: ctx.from!.id,
+      messageId: ctx.message?.message_id,
+    });
+
+    if (stats.pending > 0 || stats.running > 0) {
+      await ctx.reply("Working on it\\.\\.\\.", { parse_mode: "MarkdownV2" });
     }
-    
-    await ctx.reply(response);
+
+    await ctx.api.sendChatAction(ctx.chat!.id, "typing");
+
+    const checkInterval = setInterval(() => {
+      ctx.api.sendChatAction(ctx.chat!.id, "typing").catch(() => {});
+    }, 3000);
+
+    try {
+      const checkCompletion = (): Promise<void> => {
+        return new Promise((resolve) => {
+          const interval = setInterval(() => {
+            const currentTask = queue.getTask(task.id);
+            if (currentTask && (currentTask.status === "completed" || currentTask.status === "failed" || currentTask.status === "timeout")) {
+              clearInterval(interval);
+              resolve();
+            }
+          }, 100);
+        });
+      };
+
+      await checkCompletion();
+
+      const completedTask = queue.getTask(task.id);
+      
+      if (completedTask?.result) {
+        const result = completedTask.result as { response: string; toolReactions: string[] };
+        
+        if (result.toolReactions && result.toolReactions.length > 0) {
+          const lastTool = result.toolReactions[result.toolReactions.length - 1];
+          const reaction = getToolReaction(lastTool);
+          try {
+            await ctx.react(reaction);
+          } catch {
+            // Reaction might not be supported
+          }
+        }
+        
+        await ctx.reply(result.response);
+      } else if (completedTask?.error) {
+        await ctx.reply(`Error: ${completedTask.error}`);
+      } else {
+        await ctx.reply("Something went wrong processing your message.");
+      }
+    } finally {
+      clearInterval(checkInterval);
+    }
   } catch (error) {
-    console.error("Agent error:", error);
+    console.error("Message handler error:", error);
     await ctx.reply(`I encountered an error: ${error instanceof Error ? error.message : "Unknown error"}`);
-  } finally {
-    agent.setToolCallCallback(() => {});
   }
 }

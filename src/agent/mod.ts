@@ -1,6 +1,7 @@
 import type { Config } from "../config/mod.ts";
 import { toolRegistry, type ToolResult } from "./tools.ts";
 import { loadSoul, formatSoulForPrompt } from "../soul/mod.ts";
+import { getLockManager, Mutex } from "./lock.ts";
 
 export type ToolCallCallback = (toolName: string) => void;
 
@@ -25,6 +26,11 @@ interface LLMResponse {
   content: string | null;
   tool_calls?: ToolCallMessage[];
   finish_reason: string;
+}
+
+interface ToolCallResult {
+  toolCall: ToolCallMessage;
+  result: ToolResult;
 }
 
 const SYSTEM_PROMPT = `You are Aria, a helpful personal assistant with access to tools and skills.
@@ -58,7 +64,8 @@ Do NOT manually escape special characters - the system handles escaping automati
 
 export class Agent {
   private config: Config;
-  private conversationHistory: Message[] = [];
+  private conversationHistories: Map<number, Message[]> = new Map();
+  private historyMutexes: Map<number, Mutex> = new Map();
   private maxHistoryLength: number = 20;
   private onToolCall: ToolCallCallback | null = null;
 
@@ -70,15 +77,41 @@ export class Agent {
     this.onToolCall = callback;
   }
 
-  async processMessage(userMessage: string): Promise<string> {
+  private getHistory(chatId: number): Message[] {
+    let history = this.conversationHistories.get(chatId);
+    if (!history) {
+      history = [];
+      this.conversationHistories.set(chatId, history);
+    }
+    return history;
+  }
+
+  private getMutex(chatId: number): Mutex {
+    let mutex = this.historyMutexes.get(chatId);
+    if (!mutex) {
+      mutex = new Mutex();
+      this.historyMutexes.set(chatId, mutex);
+    }
+    return mutex;
+  }
+
+  processMessage(userMessage: string, chatId?: number): Promise<string> {
+    const effectiveChatId = chatId ?? 0;
+    const mutex = this.getMutex(effectiveChatId);
+
+    return mutex.withLock(() => this.processMessageInternal(userMessage, effectiveChatId));
+  }
+
+  private async processMessageInternal(userMessage: string, chatId: number): Promise<string> {
+    const history = this.getHistory(chatId);
     const tools = this.getToolsSchema();
     const soul = await loadSoul();
     const soulPrompt = formatSoulForPrompt(soul.content);
 
     const systemMessage = `${SYSTEM_PROMPT}\n\n${soulPrompt}\n\nAvailable tools:\n${JSON.stringify(tools, null, 2)}`;
 
-    this.addToHistory({ role: "system", content: systemMessage });
-    this.addToHistory({ role: "user", content: userMessage });
+    this.addToHistory(history, { role: "system", content: systemMessage });
+    this.addToHistory(history, { role: "user", content: userMessage });
 
     let response: string | null = null;
     let iterations = 0;
@@ -87,54 +120,65 @@ export class Agent {
     while (!response && iterations < maxIterations) {
       iterations++;
 
-      const llmResponse = await this.callLLM();
+      const llmResponse = await this.callLLM(history);
 
       if (llmResponse.tool_calls && llmResponse.tool_calls.length > 0) {
-        this.addToHistory({
+        this.addToHistory(history, {
           role: "assistant",
           content: llmResponse.content || "",
           tool_calls: llmResponse.tool_calls,
         });
 
-        for (const toolCall of llmResponse.tool_calls) {
-          if (this.onToolCall) {
-            this.onToolCall(toolCall.function.name);
-          }
-          const result = await this.executeToolCall(toolCall);
-          this.addToHistory({
+        const toolResults = await this.executeToolCallsParallel(llmResponse.tool_calls);
+
+        for (const { toolCall, result } of toolResults) {
+          this.addToHistory(history, {
             role: "tool",
             content: JSON.stringify(result),
             tool_call_id: toolCall.id,
             name: toolCall.function.name,
           });
         }
-        
+
         continue;
       }
 
       if (llmResponse.content) {
         response = llmResponse.content;
         console.log(`[ARIA] ${response}`);
-        this.addToHistory({ role: "assistant", content: response });
+        this.addToHistory(history, { role: "assistant", content: response });
       }
     }
 
     return response ?? "I apologize, but I couldn't process your request. Please try again.";
   }
 
-  private addToHistory(message: Message): void {
-    this.conversationHistory.push(message);
-    if (this.conversationHistory.length > this.maxHistoryLength + 1) {
-      const systemMessages = this.conversationHistory.filter((m) => m.role === "system");
-      const otherMessages = this.conversationHistory.filter((m) => m.role !== "system");
-      this.conversationHistory = [
+  private executeToolCallsParallel(toolCalls: ToolCallMessage[]): Promise<ToolCallResult[]> {
+    const promises = toolCalls.map((toolCall) => {
+      if (this.onToolCall) {
+        this.onToolCall(toolCall.function.name);
+      }
+
+      return this.executeToolCall(toolCall).then((result) => ({ toolCall, result }));
+    });
+
+    return Promise.all(promises);
+  }
+
+  private addToHistory(history: Message[], message: Message): void {
+    history.push(message);
+    if (history.length > this.maxHistoryLength + 1) {
+      const systemMessages = history.filter((m) => m.role === "system");
+      const otherMessages = history.filter((m) => m.role !== "system");
+      history.length = 0;
+      history.push(
         ...systemMessages,
         ...otherMessages.slice(-this.maxHistoryLength),
-      ];
+      );
     }
   }
 
-  private async callLLM(): Promise<LLMResponse> {
+  private async callLLM(history: Message[]): Promise<LLMResponse> {
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -144,7 +188,7 @@ export class Agent {
       },
       body: JSON.stringify({
         model: this.config.openrouter.defaultModel,
-        messages: this.conversationHistory,
+        messages: history,
         tools: this.getToolsSchema(),
         tool_choice: "auto",
         max_tokens: this.config.openrouter.maxTokens,
@@ -195,8 +239,14 @@ export class Agent {
     return toolRegistry.executeTool({ tool: toolName, input });
   }
 
-  clearHistory(): void {
-    this.conversationHistory = [];
+  clearHistory(chatId?: number): void {
+    if (chatId !== undefined) {
+      this.conversationHistories.delete(chatId);
+      this.historyMutexes.delete(chatId);
+    } else {
+      this.conversationHistories.clear();
+      this.historyMutexes.clear();
+    }
   }
 }
 
@@ -210,3 +260,11 @@ export function initializeAgent(config: Config): Agent {
 export function getAgent(): Agent | null {
   return agentInstance;
 }
+
+export { getLockManager };
+export {
+  getContinuationManager,
+  initializeContinuationManager,
+  type PendingContinuation,
+  type ContinuationConfig,
+} from "./continuation.ts";

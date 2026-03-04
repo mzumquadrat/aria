@@ -164,6 +164,17 @@ scheduler:
   max_concurrent: 5
 
 # -------------------------------------------
+# Message Queue
+# -------------------------------------------
+# Controls message processing and parallelism
+queue:
+  # Maximum concurrent message processing tasks
+  max_concurrent: 3
+
+  # Default timeout for task execution (ms)
+  default_timeout: 60000
+
+# -------------------------------------------
 # Logging
 # -------------------------------------------
 logging:

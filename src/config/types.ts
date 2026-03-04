@@ -77,6 +77,12 @@ export const SchedulerConfigSchema = z.object({
   maxConcurrent: z.number().default(5),
 });
 
+export const QueueConfigSchema = z.object({
+  maxConcurrent: z.number().default(3),
+  defaultTimeout: z.number().default(60000),
+  shutdownTimeout: z.number().default(30000),
+});
+
 export const LoggingConfigSchema = z.object({
   level: z.enum(["debug", "info", "warn", "error"]).default("info"),
   auditEnabled: z.boolean().default(true),
@@ -91,6 +97,7 @@ export const ConfigSchema = z.object({
   shell: ShellConfigSchema.optional(),
   approval: ApprovalConfigSchema.optional(),
   scheduler: SchedulerConfigSchema.optional(),
+  queue: QueueConfigSchema.optional(),
   logging: LoggingConfigSchema.optional(),
   database: z.object({
     path: z.string().default("./data/aria.db"),
@@ -110,4 +117,5 @@ export type GoogleCalendarConfig = z.infer<typeof GoogleCalendarConfigSchema>;
 export type CalendarConfig = z.infer<typeof CalendarConfigSchema>;
 export type ApprovalConfig = z.infer<typeof ApprovalConfigSchema>;
 export type SchedulerConfig = z.infer<typeof SchedulerConfigSchema>;
+export type QueueConfig = z.infer<typeof QueueConfigSchema>;
 export type LoggingConfig = z.infer<typeof LoggingConfigSchema>;
