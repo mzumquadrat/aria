@@ -15,6 +15,7 @@ export class BrowserSession {
   private sessionId: string | null = null;
   private targets = new Map<string, TargetInfo>();
   private config: BrowserConfig;
+  private initialConnect = true;
 
   constructor(config: BrowserConfig) {
     this.config = config;
@@ -53,10 +54,19 @@ export class BrowserSession {
 
     const pageTarget = result.targetInfos.find((t) => t.type === "page");
     if (pageTarget) {
-      await this.attachToTarget(pageTarget.targetId);
-    } else {
-      await this.createNewTab();
+      this.activeTargetId = pageTarget.targetId;
+      await this.enablePageDomains();
     }
+    
+    this.initialConnect = false;
+  }
+
+  private async enablePageDomains(): Promise<void> {
+    const sessionId = this.sessionId ?? undefined;
+    await this.client.send("Page.enable", {}, sessionId);
+    await this.client.send("Runtime.enable", {}, sessionId);
+    await this.client.send("DOM.enable", {}, sessionId);
+    await this.client.send("Network.enable", {}, sessionId);
   }
 
   disconnect(): void {
@@ -67,6 +77,11 @@ export class BrowserSession {
   }
 
   private async attachToTarget(targetId: string): Promise<void> {
+    if (this.initialConnect && targetId === this.activeTargetId) {
+      await this.enablePageDomains();
+      return;
+    }
+
     const result = await this.client.send<{ sessionId: string }>(
       "Target.attachToTarget",
       { targetId, flatten: true },
@@ -75,10 +90,7 @@ export class BrowserSession {
     this.activeTargetId = targetId;
     this.sessionId = result.sessionId;
 
-    await this.client.send("Page.enable", {}, this.sessionId);
-    await this.client.send("Runtime.enable", {}, this.sessionId);
-    await this.client.send("DOM.enable", {}, this.sessionId);
-    await this.client.send("Network.enable", {}, this.sessionId);
+    await this.enablePageDomains();
   }
 
   async createNewTab(url?: string): Promise<TabInfo> {

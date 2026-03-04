@@ -8,6 +8,14 @@ type CommandResolver = {
 
 type EventHandler = (event: CDPEvent) => void;
 
+interface DevToolsTarget {
+  id: string;
+  type: string;
+  title: string;
+  url: string;
+  webSocketDebuggerUrl: string;
+}
+
 export class CDPClient {
   private ws: WebSocket | null = null;
   private commandId = 0;
@@ -15,18 +23,20 @@ export class CDPClient {
   private eventHandlers = new Map<string, Set<EventHandler>>();
   private defaultTimeout: number;
   private isConnected = false;
+  private endpoint: string;
 
   constructor(
-    private endpoint: string,
+    endpoint: string,
     defaultTimeout = 30000,
   ) {
+    this.endpoint = endpoint.replace(/\/$/, "");
     this.defaultTimeout = defaultTimeout;
   }
 
-  connect(): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const wsUrl = this.endpoint.replace("http://", "ws://").replace("https://", "wss://");
+  async connect(): Promise<void> {
+    const wsUrl = await this.getWebSocketDebuggerUrl();
 
+    return new Promise((resolve, reject) => {
       this.ws = new WebSocket(wsUrl);
 
       this.ws.onopen = () => {
@@ -57,6 +67,38 @@ export class CDPClient {
         this.rejectAllPending("Connection closed");
       };
     });
+  }
+
+  private async getWebSocketDebuggerUrl(): Promise<string> {
+    const jsonUrl = `${this.endpoint}/json`;
+
+    try {
+      const response = await fetch(jsonUrl);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch ${jsonUrl}: ${response.status}`);
+      }
+
+      const targets: DevToolsTarget[] = await response.json();
+
+      if (!targets || targets.length === 0) {
+        throw new Error("No devtools targets found. Make sure Chrome is running with --remote-debugging-port=9222");
+      }
+
+      const pageTarget = targets.find((t) => t.type === "page");
+      const target = pageTarget ?? targets[0];
+
+      if (!target.webSocketDebuggerUrl) {
+        throw new Error("Target has no webSocketDebuggerUrl");
+      }
+
+      console.log(`[CDP] Found target: ${target.title} (${target.url})`);
+      return target.webSocketDebuggerUrl;
+    } catch (error) {
+      if (error instanceof Error) {
+        throw new Error(`Failed to get WebSocket debugger URL: ${error.message}`);
+      }
+      throw error;
+    }
   }
 
   disconnect(): void {
