@@ -34,7 +34,8 @@ export interface GenerateSkillOptions {
 export async function generateSkillFromPrompt(
   options: GenerateSkillOptions
 ): Promise<ImportResult> {
-  const { prompt, apiKey, model = "anthropic/claude-sonnet-4" } = options;
+  // Default model is only used as fallback; handler should pass config.openrouter.defaultModel
+  const { prompt, apiKey, model = "deepseek/deepseek-chat" } = options;
 
   try {
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {

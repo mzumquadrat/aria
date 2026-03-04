@@ -25,15 +25,15 @@ openrouter:
   api_key: ${OPENROUTER_API_KEY}
 
   # Primary model for conversations
-  # Options: anthropic/claude-sonnet-4, openai/gpt-4o, etc.
-  default_model: anthropic/claude-sonnet-4
+  # Options: deepseek/deepseek-chat, anthropic/claude-sonnet-4, openai/gpt-4o, etc.
+  default_model: deepseek/deepseek-chat
 
   # Fallback model if primary fails
   fallback_model: openai/gpt-4o-mini
 
   # Vision model for image analysis (must support vision)
-  # Options: anthropic/claude-sonnet-4, openai/gpt-4o, google/gemini-pro-vision, etc.
-  vision_model: ${OPENROUTER_VISION_MODEL:-anthropic/claude-sonnet-4}
+  # Options: deepseek/deepseek-chat, anthropic/claude-sonnet-4, openai/gpt-4o, etc.
+  vision_model: ${OPENROUTER_VISION_MODEL:-deepseek/deepseek-chat}
 
   # Maximum tokens for LLM responses (default: 4096)
   # Increase for longer responses, decrease to save costs

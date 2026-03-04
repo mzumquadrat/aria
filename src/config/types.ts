@@ -61,9 +61,9 @@ export const CalendarConfigSchema = z.object({
 
 export const OpenRouterConfigSchema = z.object({
   apiKey: z.string().min(1, "OpenRouter API key is required"),
-  defaultModel: z.string().default("anthropic/claude-sonnet-4"),
+  defaultModel: z.string().default("deepseek/deepseek-chat"),
   fallbackModel: z.string().default("openai/gpt-4o-mini"),
-  visionModel: z.string().default("anthropic/claude-sonnet-4"),
+  visionModel: z.string().default("deepseek/deepseek-chat"),
   httpReferer: z.string().optional(),
   maxTokens: z.number().int().positive().default(4096),
 });
