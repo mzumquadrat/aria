@@ -2,6 +2,7 @@ import type { Bot } from "grammy";
 import type { Config, QueueConfig } from "../config/mod.ts";
 import { TaskQueue, type QueuedTask, type TaskContext } from "../queue/mod.ts";
 import { getAgent } from "../agent/mod.ts";
+import { toolRegistry } from "../agent/tools.ts";
 
 export interface MessagePayload {
   text: string;
@@ -56,20 +57,26 @@ function createMessageHandler() {
       throw new Error("Agent not initialized");
     }
 
+    const chatId = task.context.chatId;
+    if (chatId !== undefined) {
+      toolRegistry.setCurrentChatId(chatId);
+    }
+
     const toolReactions: string[] = [];
 
     agent.setToolCallCallback((toolName: string) => {
       toolReactions.push(toolName);
-      if (botInstance && task.context.chatId) {
-        botInstance.api.sendChatAction(task.context.chatId, "typing").catch(() => {});
+      if (botInstance && chatId) {
+        botInstance.api.sendChatAction(chatId, "typing").catch(() => {});
       }
     });
 
     try {
-      const response = await agent.processMessage(task.payload.text, task.context.chatId);
+      const response = await agent.processMessage(task.payload.text, chatId);
       return { response, toolReactions };
     } finally {
       agent.setToolCallCallback(() => {});
+      toolRegistry.setCurrentChatId(null);
     }
   };
 }

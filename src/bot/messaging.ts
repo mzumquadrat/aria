@@ -1,4 +1,5 @@
 import type { Bot } from "grammy";
+import { InputFile } from "grammy";
 import type { Config } from "../config/mod.ts";
 
 let botInstance: Bot | null = null;
@@ -34,7 +35,7 @@ export function escapeMarkdownV2(text: string): string {
   let lastIndex = 0;
   
   // Find all formatting entities
-  let match;
+  let match: RegExpExecArray | null;
   while ((match = formattingPattern.exec(unescaped)) !== null) {
     // Add text before this match (needs escaping)
     if (match.index > lastIndex) {
@@ -122,4 +123,62 @@ export async function sendMessageToChat(chatId: number, message: string): Promis
 
 export function getAllowedUserId(): number | undefined {
   return configInstance?.telegram.allowedUserId;
+}
+
+export async function sendPhotoToChat(
+  chatId: number,
+  photo: string | Uint8Array,
+  caption?: string,
+): Promise<boolean> {
+  if (!botInstance) {
+    console.error("Messaging not initialized");
+    return false;
+  }
+
+  try {
+    let photoInput: string | InputFile;
+    if (typeof photo === "string") {
+      const photoBuffer = Uint8Array.from(atob(photo), (c) => c.charCodeAt(0));
+      photoInput = new InputFile(photoBuffer, "photo.jpg");
+    } else {
+      photoInput = new InputFile(photo, "photo.jpg");
+    }
+
+    const options: { caption?: string; parse_mode?: "MarkdownV2" } = {};
+    if (caption) {
+      options.caption = escapeMarkdownV2(caption);
+      options.parse_mode = "MarkdownV2";
+    }
+
+    await botInstance.api.sendPhoto(chatId, photoInput, options);
+    return true;
+  } catch (error) {
+    console.error("Failed to send photo:", error);
+    return false;
+  }
+}
+
+export async function sendPhotoByUrlToChat(
+  chatId: number,
+  url: string,
+  caption?: string,
+): Promise<boolean> {
+  if (!botInstance) {
+    console.error("Messaging not initialized");
+    return false;
+  }
+
+  try {
+    const options: { caption?: string; parse_mode?: "MarkdownV2" } = {};
+    if (caption) {
+      options.caption = escapeMarkdownV2(caption);
+      options.parse_mode = "MarkdownV2";
+    }
+
+    await botInstance.api.sendPhoto(chatId, url, options);
+    return true;
+  } catch (error) {
+    console.error("Failed to send photo by URL:", error);
+    return false;
+  }
 }

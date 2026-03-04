@@ -11,6 +11,9 @@ import { getScheduler, initializeScheduler } from "./scheduler/mod.ts";
 import { initializeMessaging } from "./bot/messaging.ts";
 import { createShellEnvironment } from "./shell/mod.ts";
 import { initializeMessageQueue, getMessageQueue, waitForQueueCompletion } from "./queue/mod.ts";
+import { createBrowserService } from "./browser/mod.ts";
+import { createVisionService } from "./vision/mod.ts";
+import { createPhotoService } from "./photo/mod.ts";
 
 let isShuttingDown = false;
 
@@ -57,6 +60,41 @@ async function main(): Promise<void> {
   } else {
     console.log("Shell not configured - shell commands disabled");
   }
+
+  if (config.browser) {
+    try {
+      const browserService = createBrowserService(config.browser);
+      await browserService.connect();
+      toolRegistry.setBrowserService(browserService);
+      console.log(`Browser service connected to ${config.browser.cdpEndpoint}`);
+    } catch (error) {
+      console.error("Failed to connect browser service:", error instanceof Error ? error.message : error);
+      console.log("Browser service disabled due to connection failure");
+    }
+  } else {
+    console.log("Browser not configured - browser automation disabled");
+  }
+
+  const visionConfig: {
+    apiKey: string;
+    model: string;
+    maxTokens: number;
+    httpReferer?: string;
+  } = {
+    apiKey: config.openrouter.apiKey,
+    model: config.openrouter.visionModel ?? config.openrouter.defaultModel,
+    maxTokens: config.openrouter.maxTokens,
+  };
+  if (config.openrouter.httpReferer !== undefined) {
+    visionConfig.httpReferer = config.openrouter.httpReferer;
+  }
+  const visionService = createVisionService(visionConfig);
+  toolRegistry.setVisionService(visionService);
+  console.log("Vision service initialized");
+
+  const photoService = createPhotoService();
+  toolRegistry.setPhotoService(photoService);
+  console.log("Photo service initialized");
 
   const memoryRepo = getMemoryRepository();
   toolRegistry.setMemoryRepo(memoryRepo);

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { BrowserConfigSchema } from "../browser/types.ts";
 
 export const MountConfigSchema = z.object({
   path: z.string(),
@@ -62,6 +63,7 @@ export const OpenRouterConfigSchema = z.object({
   apiKey: z.string().min(1, "OpenRouter API key is required"),
   defaultModel: z.string().default("anthropic/claude-sonnet-4"),
   fallbackModel: z.string().default("openai/gpt-4o-mini"),
+  visionModel: z.string().default("anthropic/claude-sonnet-4"),
   httpReferer: z.string().optional(),
   maxTokens: z.number().int().positive().default(4096),
 });
@@ -95,6 +97,7 @@ export const ConfigSchema = z.object({
   brave: BraveSearchConfigSchema.optional(),
   calendar: CalendarConfigSchema.optional(),
   shell: ShellConfigSchema.optional(),
+  browser: BrowserConfigSchema.optional(),
   approval: ApprovalConfigSchema.optional(),
   scheduler: SchedulerConfigSchema.optional(),
   queue: QueueConfigSchema.optional(),
@@ -119,3 +122,4 @@ export type ApprovalConfig = z.infer<typeof ApprovalConfigSchema>;
 export type SchedulerConfig = z.infer<typeof SchedulerConfigSchema>;
 export type QueueConfig = z.infer<typeof QueueConfigSchema>;
 export type LoggingConfig = z.infer<typeof LoggingConfigSchema>;
+export type { BrowserConfig } from "../browser/types.ts";

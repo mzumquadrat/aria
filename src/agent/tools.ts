@@ -9,6 +9,9 @@ import { getNextOccurrence, validateCron } from "../scheduler/cron.ts";
 import type { CreateTaskInput, TaskType } from "../storage/scheduler/types.ts";
 import { executeShellCommand, shellTool } from "../shell/mod.ts";
 import type { ShellEnvironment, ShellToolInput } from "../shell/mod.ts";
+import { BROWSER_TOOLS } from "../browser/tools.ts";
+import type { BrowserService } from "../browser/mod.ts";
+import type { VisionService } from "../vision/mod.ts";
 
 interface ScheduleTaskInput {
   type: string;
@@ -38,6 +41,11 @@ export interface ToolResult {
   success: boolean;
   output?: unknown;
   error?: string | undefined;
+}
+
+export interface PhotoService {
+  sendPhoto(chatId: number, imageData: string, caption?: string): Promise<boolean>;
+  sendPhotoByUrl(chatId: number, url: string, caption?: string): Promise<boolean>;
 }
 
 const BUILTIN_TOOLS: Tool[] = [
@@ -266,6 +274,57 @@ const BUILTIN_TOOLS: Tool[] = [
     },
   },
   shellTool,
+  {
+    type: "builtin",
+    name: "analyze_image",
+    description:
+      "Analyze an image using vision AI. Can analyze images from base64 data or URLs. Use this to understand image content, extract text, describe scenes, or answer questions about images.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        imageData: {
+          type: "string",
+          description: "Base64-encoded image data (without data URI prefix)",
+        },
+        imageUrl: {
+          type: "string",
+          description: "URL of the image to analyze (alternative to imageData)",
+        },
+        mimeType: {
+          type: "string",
+          description: "MIME type of the image (e.g., image/jpeg, image/png). Required if using imageData.",
+        },
+        prompt: {
+          type: "string",
+          description: "Specific question or instruction about the image",
+        },
+      },
+    },
+  },
+  {
+    type: "builtin",
+    name: "send_photo",
+    description:
+      "Send a photo to the user. Use this to share images, screenshots, or visual content. The photo can be provided as base64 data or a URL.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        imageData: {
+          type: "string",
+          description: "Base64-encoded image data (without data URI prefix)",
+        },
+        imageUrl: {
+          type: "string",
+          description: "URL of the image to send (alternative to imageData)",
+        },
+        caption: {
+          type: "string",
+          description: "Optional caption for the photo",
+        },
+      },
+    },
+  },
+  ...BROWSER_TOOLS,
 ];
 
 export class ToolRegistry {
@@ -273,6 +332,10 @@ export class ToolRegistry {
   private calendarService: CalendarService | null = null;
   private memoryRepo: MemoryRepository | null = null;
   private shellEnvironment: ShellEnvironment | null = null;
+  private browserService: BrowserService | null = null;
+  private visionService: VisionService | null = null;
+  private photoService: PhotoService | null = null;
+  private currentChatId: number | null = null;
 
   setBraveService(service: BraveSearchService | null): void {
     this.braveService = service;
@@ -284,6 +347,22 @@ export class ToolRegistry {
 
   setShellEnvironment(env: ShellEnvironment | null): void {
     this.shellEnvironment = env;
+  }
+
+  setBrowserService(service: BrowserService | null): void {
+    this.browserService = service;
+  }
+
+  setVisionService(service: VisionService | null): void {
+    this.visionService = service;
+  }
+
+  setPhotoService(service: PhotoService | null): void {
+    this.photoService = service;
+  }
+
+  setCurrentChatId(chatId: number | null): void {
+    this.currentChatId = chatId;
   }
 
   setMemoryRepo(repo: MemoryRepository | null): void {
@@ -391,8 +470,22 @@ export class ToolRegistry {
         case "shell":
           result = await this.executeShell(input as ShellToolInput);
           break;
+        case "analyze_image":
+          result = await this.executeAnalyzeImage(
+            input as { imageData?: string; imageUrl?: string; mimeType?: string; prompt?: string },
+          );
+          break;
+        case "send_photo":
+          result = await this.executeSendPhoto(
+            input as { imageData?: string; imageUrl?: string; caption?: string },
+          );
+          break;
         default:
-          result = { tool, success: false, error: `Unknown tool: ${tool}` };
+          if (tool.startsWith("browser_")) {
+            result = await this.executeBrowserTool(tool, input as Record<string, unknown>);
+          } else {
+            result = { tool, success: false, error: `Unknown tool: ${tool}` };
+          }
       }
     }
 
@@ -549,6 +642,141 @@ export class ToolRegistry {
         tool: "shell",
         success: false,
         error: error instanceof Error ? error.message : "Shell execution failed",
+      };
+    }
+  }
+
+  private async executeAnalyzeImage(
+    input: { imageData?: string; imageUrl?: string; mimeType?: string; prompt?: string },
+  ): Promise<ToolResult> {
+    if (!this.visionService) {
+      return { tool: "analyze_image", success: false, error: "Vision service not configured" };
+    }
+
+    try {
+      let imageData = input.imageData;
+      let mimeType = input.mimeType ?? "image/jpeg";
+
+      if (input.imageUrl && !imageData) {
+        const response = await fetch(input.imageUrl);
+        if (!response.ok) {
+          return {
+            tool: "analyze_image",
+            success: false,
+            error: `Failed to fetch image: ${response.status}`,
+          };
+        }
+        const buffer = await response.arrayBuffer();
+        imageData = btoa(String.fromCharCode(...new Uint8Array(buffer)));
+
+        const contentType = response.headers.get("content-type");
+        if (contentType?.startsWith("image/")) {
+          mimeType = contentType;
+        }
+      }
+
+      if (!imageData) {
+        return {
+          tool: "analyze_image",
+          success: false,
+          error: "Either imageData or imageUrl must be provided",
+        };
+      }
+
+      const analyzeInput: { imageData: string; mimeType: string; prompt?: string } = {
+        imageData,
+        mimeType,
+      };
+      if (input.prompt !== undefined) {
+        analyzeInput.prompt = input.prompt;
+      }
+
+      const analysis = await this.visionService.analyzeImage(analyzeInput);
+
+      return {
+        tool: "analyze_image",
+        success: true,
+        output: { analysis },
+      };
+    } catch (error) {
+      return {
+        tool: "analyze_image",
+        success: false,
+        error: error instanceof Error ? error.message : "Image analysis failed",
+      };
+    }
+  }
+
+  private async executeSendPhoto(
+    input: { imageData?: string; imageUrl?: string; caption?: string },
+  ): Promise<ToolResult> {
+    if (!this.photoService) {
+      return { tool: "send_photo", success: false, error: "Photo service not configured" };
+    }
+
+    if (!this.currentChatId) {
+      return { tool: "send_photo", success: false, error: "No active chat" };
+    }
+
+    try {
+      let success: boolean;
+
+      if (input.imageUrl) {
+        success = await this.photoService.sendPhotoByUrl(
+          this.currentChatId,
+          input.imageUrl,
+          input.caption,
+        );
+      } else if (input.imageData) {
+        success = await this.photoService.sendPhoto(
+          this.currentChatId,
+          input.imageData,
+          input.caption,
+        );
+      } else {
+        return {
+          tool: "send_photo",
+          success: false,
+          error: "Either imageData or imageUrl must be provided",
+        };
+      }
+
+      return {
+        tool: "send_photo",
+        success,
+        output: success ? { sent: true } : { sent: false, error: "Failed to send photo" },
+      };
+    } catch (error) {
+      return {
+        tool: "send_photo",
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to send photo",
+      };
+    }
+  }
+
+  private async executeBrowserTool(tool: string, input: Record<string, unknown>): Promise<ToolResult> {
+    if (!this.browserService) {
+      return { tool, success: false, error: "Browser service not configured" };
+    }
+
+    if (!this.browserService.isReady()) {
+      return { tool, success: false, error: "Browser not connected" };
+    }
+
+    try {
+      const result = await this.browserService.executor.execute(tool, input);
+      return {
+        tool,
+        success: result.success,
+        output: result.output,
+        error: result.error,
+      };
+    } catch (error) {
+      return {
+        tool,
+        success: false,
+        error: error instanceof Error ? error.message : "Browser tool execution failed",
       };
     }
   }

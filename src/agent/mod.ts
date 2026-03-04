@@ -2,12 +2,13 @@ import type { Config } from "../config/mod.ts";
 import { toolRegistry, type ToolResult } from "./tools.ts";
 import { loadSoul, formatSoulForPrompt } from "../soul/mod.ts";
 import { getLockManager, Mutex } from "./lock.ts";
+import type { MessageContent } from "../vision/types.ts";
 
 export type ToolCallCallback = (toolName: string) => void;
 
 interface Message {
   role: "system" | "user" | "assistant" | "tool";
-  content: string;
+  content: MessageContent;
   name?: string;
   tool_calls?: ToolCallMessage[];
   tool_call_id?: string;
@@ -68,6 +69,7 @@ export class Agent {
   private historyMutexes: Map<number, Mutex> = new Map();
   private maxHistoryLength: number = 20;
   private onToolCall: ToolCallCallback | null = null;
+  private pendingImages: Map<number, Array<{ imageData: string; mimeType: string; description?: string }>> = new Map();
 
   constructor(config: Config) {
     this.config = config;
@@ -75,6 +77,25 @@ export class Agent {
 
   setToolCallCallback(callback: ToolCallCallback): void {
     this.onToolCall = callback;
+  }
+
+  addPendingImage(chatId: number, imageData: string, mimeType: string, description?: string): void {
+    if (!this.pendingImages.has(chatId)) {
+      this.pendingImages.set(chatId, []);
+    }
+    const entry: { imageData: string; mimeType: string; description?: string } = { imageData, mimeType };
+    if (description !== undefined) {
+      entry.description = description;
+    }
+    this.pendingImages.get(chatId)!.push(entry);
+  }
+
+  getPendingImages(chatId: number): Array<{ imageData: string; mimeType: string; description?: string }> {
+    return this.pendingImages.get(chatId) ?? [];
+  }
+
+  clearPendingImages(chatId: number): void {
+    this.pendingImages.delete(chatId);
   }
 
   private getHistory(chatId: number): Message[] {
@@ -111,7 +132,27 @@ export class Agent {
     const systemMessage = `${SYSTEM_PROMPT}\n\n${soulPrompt}\n\nAvailable tools:\n${JSON.stringify(tools, null, 2)}`;
 
     this.addToHistory(history, { role: "system", content: systemMessage });
-    this.addToHistory(history, { role: "user", content: userMessage });
+
+    const pendingImages = this.pendingImages.get(chatId) ?? [];
+    if (pendingImages.length > 0) {
+      const userContent: Array<{ type: string; text?: string; image_url?: { url: string } }> = [
+        { type: "text", text: userMessage },
+      ];
+
+      for (const img of pendingImages) {
+        userContent.push({
+          type: "image_url",
+          image_url: {
+            url: `data:${img.mimeType};base64,${img.imageData}`,
+          },
+        });
+      }
+
+      this.addToHistory(history, { role: "user", content: userContent as MessageContent });
+      this.clearPendingImages(chatId);
+    } else {
+      this.addToHistory(history, { role: "user", content: userMessage });
+    }
 
     let response: string | null = null;
     let iterations = 0;
@@ -178,7 +219,25 @@ export class Agent {
     }
   }
 
+  private hasImagesInHistory(history: Message[]): boolean {
+    for (const msg of history) {
+      if (typeof msg.content !== "string" && Array.isArray(msg.content)) {
+        for (const part of msg.content) {
+          if (typeof part === "object" && "type" in part && part.type === "image_url") {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
+
   private async callLLM(history: Message[]): Promise<LLMResponse> {
+    const hasImages = this.hasImagesInHistory(history);
+    const model = hasImages
+      ? (this.config.openrouter.visionModel ?? this.config.openrouter.defaultModel)
+      : this.config.openrouter.defaultModel;
+
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -187,7 +246,7 @@ export class Agent {
         "HTTP-Referer": this.config.openrouter.httpReferer ?? "https://aria.local",
       },
       body: JSON.stringify({
-        model: this.config.openrouter.defaultModel,
+        model,
         messages: history,
         tools: this.getToolsSchema(),
         tool_choice: "auto",

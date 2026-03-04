@@ -25,6 +25,7 @@ function createTestConfig(): Config {
       apiKey: "test-key",
       defaultModel: "test-model",
       fallbackModel: "fallback-model",
+      visionModel: "vision-model",
       maxTokens: 1000,
     },
     queue: {
