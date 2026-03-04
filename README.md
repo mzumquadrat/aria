@@ -14,7 +14,6 @@ A personal assistant built with TypeScript and Deno, communicating via Telegram,
 - 🎙️ Voice support via ElevenLabs (transcription & TTS)
 - 🔍 Web search via Brave Search API
 - 📅 Calendar integration (CalDAV & Google Calendar)
-- 🎵 Music library integration (Subsonic + Last.fm)
 - 💾 SQLite persistence with FTS5 search
 
 ## Personality
@@ -112,8 +111,6 @@ Configuration is loaded from `config.yaml` with environment variable substitutio
 - **Brave Search** - Web search capability
 - **Calendar** - CalDAV and/or Google Calendar integration
 - **Shell** - Sandboxed command execution with mounts
-- **Subsonic** - Music library for playlist management
-- **Last.fm** - Mood-based music recommendations
 
 ## Project Structure
 
@@ -127,13 +124,11 @@ aria/
 │   ├── calendar/      # CalDAV and Google Calendar
 │   ├── config/        # Configuration loading and validation
 │   ├── elevenlabs/    # Voice transcription and TTS
-│   ├── lastfm/        # Last.fm integration for music
 │   ├── scheduler/     # Task scheduling (cron support)
 │   ├── shell/         # Sandboxed bash execution (just-bash)
 │   ├── skills/        # Dynamic skill generation and execution
 │   ├── soul/          # Soul document loader
 │   ├── storage/       # SQLite database + Memory system
-│   └── subsonic/      # Subsonic music server integration
 ├── tests/             # Test files
 └── config.yaml        # Configuration file
 ```

@@ -4,14 +4,11 @@ import { createBot, setupBot, startBot, stopBot } from "./bot/mod.ts";
 import { createElevenLabsService } from "./elevenlabs/mod.ts";
 import { createBraveSearchService } from "./brave/mod.ts";
 import { createCalendarService } from "./calendar/mod.ts";
-import { createSubsonicService } from "./subsonic/mod.ts";
-import { createLastfmService, LastfmCache } from "./lastfm/mod.ts";
 import { initializeAgent } from "./agent/mod.ts";
 import { toolRegistry } from "./agent/tools.ts";
 import { getMemoryRepository } from "./storage/memory/mod.ts";
 import { getScheduler, initializeScheduler } from "./scheduler/mod.ts";
 import { initializeMessaging } from "./bot/messaging.ts";
-import { getDatabase } from "./storage/mod.ts";
 import { createShellEnvironment } from "./shell/mod.ts";
 
 let isShuttingDown = false;
@@ -47,26 +44,6 @@ async function main(): Promise<void> {
     console.log(`Calendar service initialized (${providers.join(", ")})`);
   } else {
     console.log("Calendar not configured - calendar features disabled");
-  }
-
-  if (config.lastfm) {
-    const lastfmService = createLastfmService(config.lastfm);
-    const db = getDatabase();
-    const lastfmCache = new LastfmCache(db);
-    lastfmService.setCache(lastfmCache);
-    toolRegistry.setLastfmService(lastfmService);
-    const usernameInfo = config.lastfm.username ? ` (user: ${config.lastfm.username})` : "";
-    console.log(`Last.fm service initialized${usernameInfo}`);
-  } else {
-    console.log("Last.fm not configured - music recommendations limited");
-  }
-
-  if (config.subsonic) {
-    const subsonicService = createSubsonicService(config.subsonic);
-    toolRegistry.setSubsonicService(subsonicService);
-    console.log("Subsonic music service initialized");
-  } else {
-    console.log("Subsonic not configured - music features disabled");
   }
 
   if (config.shell && config.shell.mounts.length > 0) {

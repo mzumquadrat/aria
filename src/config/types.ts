@@ -82,20 +82,6 @@ export const LoggingConfigSchema = z.object({
   auditEnabled: z.boolean().default(true),
 });
 
-export const SubsonicConfigSchema = z.object({
-  serverUrl: z.string().url("Subsonic server URL must be valid"),
-  username: z.string().min(1, "Subsonic username is required"),
-  password: z.string().min(1, "Subsonic password is required"),
-  defaultPlaylistPrefix: z.string().default("Aria: "),
-});
-
-export const LastfmConfigSchema = z.object({
-  apiKey: z.string().min(1, "Last.fm API key is required"),
-  username: z.string().optional(),
-  cacheExpiryDays: z.number().default(7),
-  rateLimitPerSecond: z.number().default(4),
-});
-
 export const ConfigSchema = z.object({
   telegram: TelegramConfigSchema,
   openrouter: OpenRouterConfigSchema,
@@ -106,8 +92,6 @@ export const ConfigSchema = z.object({
   approval: ApprovalConfigSchema.optional(),
   scheduler: SchedulerConfigSchema.optional(),
   logging: LoggingConfigSchema.optional(),
-  subsonic: SubsonicConfigSchema.optional(),
-  lastfm: LastfmConfigSchema.optional(),
   database: z.object({
     path: z.string().default("./data/aria.db"),
   }).optional(),
@@ -127,5 +111,3 @@ export type CalendarConfig = z.infer<typeof CalendarConfigSchema>;
 export type ApprovalConfig = z.infer<typeof ApprovalConfigSchema>;
 export type SchedulerConfig = z.infer<typeof SchedulerConfigSchema>;
 export type LoggingConfig = z.infer<typeof LoggingConfigSchema>;
-export type SubsonicConfig = z.infer<typeof SubsonicConfigSchema>;
-export type LastfmConfig = z.infer<typeof LastfmConfigSchema>;
