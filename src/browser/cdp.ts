@@ -72,33 +72,31 @@ export class CDPClient {
   private async getWebSocketDebuggerUrl(): Promise<string> {
     const jsonUrl = `${this.endpoint}/json`;
 
+    // First, try Chrome-style /json endpoint for WebSocket discovery
     try {
       const response = await fetch(jsonUrl);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch ${jsonUrl}: ${response.status}`);
+      if (response.ok) {
+        const targets: DevToolsTarget[] = await response.json();
+
+        if (targets && targets.length > 0) {
+          const pageTarget = targets.find((t) => t.type === "page");
+          const target = pageTarget ?? targets[0];
+
+          if (target.webSocketDebuggerUrl) {
+            console.log(`[CDP] Found target: ${target.title} (${target.url})`);
+            return target.webSocketDebuggerUrl;
+          }
+        }
       }
-
-      const targets: DevToolsTarget[] = await response.json();
-
-      if (!targets || targets.length === 0) {
-        throw new Error("No devtools targets found. Make sure Chrome is running with --remote-debugging-port=9222");
-      }
-
-      const pageTarget = targets.find((t) => t.type === "page");
-      const target = pageTarget ?? targets[0];
-
-      if (!target.webSocketDebuggerUrl) {
-        throw new Error("Target has no webSocketDebuggerUrl");
-      }
-
-      console.log(`[CDP] Found target: ${target.title} (${target.url})`);
-      return target.webSocketDebuggerUrl;
-    } catch (error) {
-      if (error instanceof Error) {
-        throw new Error(`Failed to get WebSocket debugger URL: ${error.message}`);
-      }
-      throw error;
+    } catch {
+      // /json endpoint not available, try direct WebSocket (Lightpanda mode)
     }
+
+    // Fall back to direct WebSocket connection (for Lightpanda and similar browsers)
+    // Convert HTTP URL to WebSocket URL
+    const wsUrl = this.endpoint.replace(/^http:\/\//, "ws://").replace(/^https:\/\//, "wss://");
+    console.log(`[CDP] Using direct WebSocket connection: ${wsUrl}`);
+    return wsUrl;
   }
 
   disconnect(): void {
