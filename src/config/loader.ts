@@ -64,6 +64,20 @@ function loadFromEnv(): Record<string, unknown> {
         defaultCalendar: Deno.env.get("GOOGLE_CALENDAR_DEFAULT"),
       } : undefined,
     },
+    browser: Deno.env.get("BROWSER_CDP_ENDPOINT") ? {
+      cdpEndpoint: Deno.env.get("BROWSER_CDP_ENDPOINT"),
+      defaultTimeout: Deno.env.get("BROWSER_DEFAULT_TIMEOUT") 
+        ? parseInt(Deno.env.get("BROWSER_DEFAULT_TIMEOUT")!, 10) 
+        : undefined,
+      screenshotQuality: Deno.env.get("BROWSER_SCREENSHOT_QUALITY")
+        ? parseInt(Deno.env.get("BROWSER_SCREENSHOT_QUALITY")!, 10)
+        : undefined,
+      autoApproveNavigate: Deno.env.get("BROWSER_AUTO_APPROVE_NAVIGATE") === "true",
+      autoApproveForms: Deno.env.get("BROWSER_AUTO_APPROVE_FORMS") === "true",
+      approvalTimeout: Deno.env.get("BROWSER_APPROVAL_TIMEOUT")
+        ? parseInt(Deno.env.get("BROWSER_APPROVAL_TIMEOUT")!, 10)
+        : undefined,
+    } : undefined,
     database: {
       path: Deno.env.get("DATABASE_PATH"),
     },
