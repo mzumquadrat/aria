@@ -24,13 +24,17 @@ export class CDPClient {
   private defaultTimeout: number;
   private isConnected = false;
   private endpoint: string;
+  private keepaliveInterval: number | null = null;
+  private keepaliveIntervalMs: number;
 
   constructor(
     endpoint: string,
     defaultTimeout = 30000,
+    keepaliveIntervalMs = 5000,
   ) {
     this.endpoint = endpoint.replace(/\/$/, "");
     this.defaultTimeout = defaultTimeout;
+    this.keepaliveIntervalMs = keepaliveIntervalMs;
   }
 
   async connect(): Promise<void> {
@@ -42,6 +46,7 @@ export class CDPClient {
       this.ws.onopen = () => {
         this.isConnected = true;
         console.log("[CDP] Connected to browser");
+        this.startKeepalive();
         resolve();
       };
 
@@ -63,6 +68,7 @@ export class CDPClient {
 
       this.ws.onclose = () => {
         this.isConnected = false;
+        this.stopKeepalive();
         console.log("[CDP] Disconnected from browser");
         this.rejectAllPending("Connection closed");
       };
@@ -100,12 +106,61 @@ export class CDPClient {
   }
 
   disconnect(): void {
+    this.stopKeepalive();
     if (this.ws) {
       this.ws.close();
       this.ws = null;
       this.isConnected = false;
     }
     this.rejectAllPending("Client disconnected");
+  }
+
+  private startKeepalive(): void {
+    if (this.keepaliveInterval !== null) {
+      return;
+    }
+
+    this.keepaliveInterval = setInterval(() => {
+      if (this.isConnected && this.ws) {
+        // Send a lightweight command to keep the connection alive
+        // Browser.getVersion is a good candidate as it's supported by most browsers
+        this.sendRaw("Browser.getVersion").catch((error) => {
+          // Log but don't throw - keepalive failures shouldn't crash
+          console.warn("[CDP] Keepalive failed:", error instanceof Error ? error.message : error);
+        });
+      }
+    }, this.keepaliveIntervalMs);
+  }
+
+  private stopKeepalive(): void {
+    if (this.keepaliveInterval !== null) {
+      clearInterval(this.keepaliveInterval);
+      this.keepaliveInterval = null;
+    }
+  }
+
+  private sendRaw(method: string): Promise<void> {
+    if (!this.ws || !this.isConnected) {
+      return Promise.reject(new Error("Not connected to browser"));
+    }
+
+    const id = ++this.commandId;
+    const command: CDPCommand = { id, method };
+
+    return new Promise((resolve, reject) => {
+      const timeoutHandle = setTimeout(() => {
+        this.pendingCommands.delete(id);
+        reject(new Error(`Keepalive command timed out`));
+      }, 5000);
+
+      this.pendingCommands.set(id, {
+        resolve: () => resolve(),
+        reject,
+        timeout: timeoutHandle,
+      });
+
+      this.ws!.send(JSON.stringify(command));
+    });
   }
 
   private handleMessage(message: CDPResponse | CDPEvent): void {
