@@ -1,16 +1,18 @@
 import type { SkillRecord } from "../skills/mod.ts";
-import { skillRecordToDefinition, executeSkill } from "../skills/mod.ts";
+import { executeSkill, skillRecordToDefinition } from "../skills/mod.ts";
 import { getAllSkills } from "../skills/repository.ts";
-import type { MemoryRepository, MemoryCategory } from "../storage/memory/mod.ts";
+import type { MemoryCategory, MemoryRepository } from "../storage/memory/mod.ts";
 import type { BraveSearchService } from "../brave/mod.ts";
 import type { CalendarService } from "../calendar/mod.ts";
 import type { SubsonicService } from "../subsonic/mod.ts";
 import type { LastfmService } from "../lastfm/mod.ts";
-import { getMoodTags, calculateTagMatchScore } from "../lastfm/mod.ts";
+import { calculateTagMatchScore, getMoodTags } from "../lastfm/mod.ts";
 import type { LastfmTag } from "../lastfm/mod.ts";
 import { getTaskRepository } from "../storage/scheduler/repository.ts";
-import { validateCron, getNextOccurrence } from "../scheduler/cron.ts";
-import type { TaskType, CreateTaskInput } from "../storage/scheduler/types.ts";
+import { getNextOccurrence, validateCron } from "../scheduler/cron.ts";
+import type { CreateTaskInput, TaskType } from "../storage/scheduler/types.ts";
+import { executeShellCommand, shellTool } from "../shell/mod.ts";
+import type { ShellEnvironment, ShellToolInput } from "../shell/mod.ts";
 
 interface ScheduleTaskInput {
   type: string;
@@ -46,7 +48,8 @@ const BUILTIN_TOOLS: Tool[] = [
   {
     type: "builtin",
     name: "web_search",
-    description: "Search the web for information. Use when you need to find current information, news, or research topics.",
+    description:
+      "Search the web for information. Use when you need to find current information, news, or research topics.",
     inputSchema: {
       type: "object",
       properties: {
@@ -84,8 +87,8 @@ const BUILTIN_TOOLS: Tool[] = [
       type: "object",
       properties: {
         content: { type: "string", description: "The information to remember" },
-        category: { 
-          type: "string", 
+        category: {
+          type: "string",
           description: "Category for organization",
           enum: ["preference", "fact", "conversation", "task", "reminder", "note", "general"],
         },
@@ -112,9 +115,10 @@ const BUILTIN_TOOLS: Tool[] = [
     inputSchema: {
       type: "object",
       properties: {
-        type: { 
-          type: "string", 
-          description: "Type of task: 'notification' (send message), 'skill' (execute skill), or 'agent' (self-prompt)",
+        type: {
+          type: "string",
+          description:
+            "Type of task: 'notification' (send message), 'skill' (execute skill), or 'agent' (self-prompt)",
           enum: ["notification", "skill", "agent"],
         },
         message: { type: "string", description: "Message to send (for notification type)" },
@@ -122,8 +126,15 @@ const BUILTIN_TOOLS: Tool[] = [
         skillName: { type: "string", description: "Name of skill to execute (for skill type)" },
         skillInput: { type: "object", description: "Input for the skill (for skill type)" },
         scheduledFor: { type: "string", description: "ISO datetime when to execute the task" },
-        recurrence: { type: "string", description: "Cron expression for recurring tasks (optional, e.g., '0 9 * * *' for daily at 9am)" },
-        storeInMemory: { type: "boolean", description: "Store task info in memory for recall (default: false)" },
+        recurrence: {
+          type: "string",
+          description:
+            "Cron expression for recurring tasks (optional, e.g., '0 9 * * *' for daily at 9am)",
+        },
+        storeInMemory: {
+          type: "boolean",
+          description: "Store task info in memory for recall (default: false)",
+        },
       },
       required: ["type", "scheduledFor"],
     },
@@ -135,8 +146,8 @@ const BUILTIN_TOOLS: Tool[] = [
     inputSchema: {
       type: "object",
       properties: {
-        status: { 
-          type: "string", 
+        status: {
+          type: "string",
           description: "Filter by status: 'pending', 'completed', or 'all' (default: 'pending')",
           enum: ["pending", "completed", "all"],
         },
@@ -168,12 +179,19 @@ const BUILTIN_TOOLS: Tool[] = [
   {
     type: "builtin",
     name: "get_calendar_events",
-    description: "Get calendar events within a date range. Defaults to next 7 days if no range specified.",
+    description:
+      "Get calendar events within a date range. Defaults to next 7 days if no range specified.",
     inputSchema: {
       type: "object",
       properties: {
-        startDate: { type: "string", description: "Start date in ISO format (e.g., 2024-01-01T00:00:00)" },
-        endDate: { type: "string", description: "End date in ISO format (e.g., 2024-01-07T23:59:59)" },
+        startDate: {
+          type: "string",
+          description: "Start date in ISO format (e.g., 2024-01-01T00:00:00)",
+        },
+        endDate: {
+          type: "string",
+          description: "End date in ISO format (e.g., 2024-01-07T23:59:59)",
+        },
         days: { type: "number", description: "Number of days to fetch (default: 7)" },
         calendar: { type: "string", description: "Specific calendar to query (optional)" },
       },
@@ -187,11 +205,17 @@ const BUILTIN_TOOLS: Tool[] = [
       type: "object",
       properties: {
         summary: { type: "string", description: "Event title/summary" },
-        start: { type: "string", description: "Start time in ISO format (e.g., 2024-01-15T10:00:00)" },
+        start: {
+          type: "string",
+          description: "Start time in ISO format (e.g., 2024-01-15T10:00:00)",
+        },
         end: { type: "string", description: "End time in ISO format (e.g., 2024-01-15T11:00:00)" },
         description: { type: "string", description: "Event description (optional)" },
         location: { type: "string", description: "Event location (optional)" },
-        timezone: { type: "string", description: "IANA timezone (e.g., Europe/Berlin, America/New_York)" },
+        timezone: {
+          type: "string",
+          description: "IANA timezone (e.g., Europe/Berlin, America/New_York)",
+        },
         calendar: { type: "string", description: "Specific calendar to add event to (optional)" },
       },
       required: ["summary", "start", "end"],
@@ -200,12 +224,19 @@ const BUILTIN_TOOLS: Tool[] = [
   {
     type: "builtin",
     name: "update_calendar_event",
-    description: "Update an existing calendar event. Requires eventUrl and etag from a previous get_calendar_events call. Summary, start, and end are required.",
+    description:
+      "Update an existing calendar event. Requires eventUrl and etag from a previous get_calendar_events call. Summary, start, and end are required.",
     inputSchema: {
       type: "object",
       properties: {
-        eventUrl: { type: "string", description: "Event URL/ID from get_calendar_events (uid field)" },
-        etag: { type: "string", description: "Event ETag from get_calendar_events (required for CalDAV updates)" },
+        eventUrl: {
+          type: "string",
+          description: "Event URL/ID from get_calendar_events (uid field)",
+        },
+        etag: {
+          type: "string",
+          description: "Event ETag from get_calendar_events (required for CalDAV updates)",
+        },
         summary: { type: "string", description: "New event title/summary" },
         start: { type: "string", description: "New start time in ISO format" },
         end: { type: "string", description: "New end time in ISO format" },
@@ -217,15 +248,22 @@ const BUILTIN_TOOLS: Tool[] = [
       required: ["eventUrl", "etag", "summary", "start", "end"],
     },
   },
-{
+  {
     type: "builtin",
     name: "delete_calendar_event",
-    description: "Delete a calendar event. WARNING: This action is irreversible. Always confirm with the user before deleting events. Requires eventUrl and etag from a previous get_calendar_events call.",
+    description:
+      "Delete a calendar event. WARNING: This action is irreversible. Always confirm with the user before deleting events. Requires eventUrl and etag from a previous get_calendar_events call.",
     inputSchema: {
       type: "object",
       properties: {
-        eventUrl: { type: "string", description: "Event URL/ID from get_calendar_events (uid field)" },
-        etag: { type: "string", description: "Event ETag from get_calendar_events (required for CalDAV deletes)" },
+        eventUrl: {
+          type: "string",
+          description: "Event URL/ID from get_calendar_events (uid field)",
+        },
+        etag: {
+          type: "string",
+          description: "Event ETag from get_calendar_events (required for CalDAV deletes)",
+        },
         confirm: { type: "boolean", description: "Must be true to confirm deletion" },
       },
       required: ["eventUrl", "etag", "confirm"],
@@ -234,14 +272,24 @@ const BUILTIN_TOOLS: Tool[] = [
   {
     type: "builtin",
     name: "search_music",
-    description: "Search for music in the Subsonic library. Returns songs, artists, and albums matching the query.",
+    description:
+      "Search for music in the Subsonic library. Returns songs, artists, and albums matching the query.",
     inputSchema: {
       type: "object",
       properties: {
         query: { type: "string", description: "The search query" },
-        songCount: { type: "number", description: "Maximum number of songs to return (default: 20)" },
-        albumCount: { type: "number", description: "Maximum number of albums to return (default: 20)" },
-        artistCount: { type: "number", description: "Maximum number of artists to return (default: 20)" },
+        songCount: {
+          type: "number",
+          description: "Maximum number of songs to return (default: 20)",
+        },
+        albumCount: {
+          type: "number",
+          description: "Maximum number of albums to return (default: 20)",
+        },
+        artistCount: {
+          type: "number",
+          description: "Maximum number of artists to return (default: 20)",
+        },
       },
       required: ["query"],
     },
@@ -249,12 +297,13 @@ const BUILTIN_TOOLS: Tool[] = [
   {
     type: "builtin",
     name: "get_music_library_info",
-    description: "Get information about the music library including genres, artists, and starred items.",
+    description:
+      "Get information about the music library including genres, artists, and starred items.",
     inputSchema: {
       type: "object",
       properties: {
-        type: { 
-          type: "string", 
+        type: {
+          type: "string",
           description: "Type of info to retrieve: 'genres', 'artists', 'starred', or 'all'",
           enum: ["genres", "artists", "starred", "all"],
         },
@@ -268,26 +317,41 @@ const BUILTIN_TOOLS: Tool[] = [
     inputSchema: {
       type: "object",
       properties: {
-        includeSongs: { type: "boolean", description: "Include songs in each playlist (default: false)" },
+        includeSongs: {
+          type: "boolean",
+          description: "Include songs in each playlist (default: false)",
+        },
       },
     },
   },
   {
     type: "builtin",
     name: "manage_playlist",
-    description: "Create, update, or delete a playlist. For creating, provide name and optionally songIds. For updating, provide playlistId with fields to update. For deleting, provide playlistId and confirm=true.",
+    description:
+      "Create, update, or delete a playlist. For creating, provide name and optionally songIds. For updating, provide playlistId with fields to update. For deleting, provide playlistId and confirm=true.",
     inputSchema: {
       type: "object",
       properties: {
-        action: { 
-          type: "string", 
+        action: {
+          type: "string",
           description: "Action to perform: 'create', 'update', or 'delete'",
           enum: ["create", "update", "delete"],
         },
         playlistId: { type: "string", description: "Playlist ID (required for update/delete)" },
-        name: { type: "string", description: "Playlist name (required for create, optional for update)" },
-        songIds: { type: "array", items: { type: "string" }, description: "Song IDs to add (for create)" },
-        songIdsToAdd: { type: "array", items: { type: "string" }, description: "Song IDs to add (for update)" },
+        name: {
+          type: "string",
+          description: "Playlist name (required for create, optional for update)",
+        },
+        songIds: {
+          type: "array",
+          items: { type: "string" },
+          description: "Song IDs to add (for create)",
+        },
+        songIdsToAdd: {
+          type: "array",
+          items: { type: "string" },
+          description: "Song IDs to add (for update)",
+        },
         comment: { type: "string", description: "Playlist comment/description" },
         isPublic: { type: "boolean", description: "Make playlist public" },
         confirm: { type: "boolean", description: "Must be true for delete action" },
@@ -298,25 +362,37 @@ const BUILTIN_TOOLS: Tool[] = [
   {
     type: "builtin",
     name: "create_smart_playlist",
-    description: "Create an intelligent playlist based on mood, genre, artist, or other criteria. Uses Last.fm for mood matching and similar song recommendations when available.",
+    description:
+      "Create an intelligent playlist based on mood, genre, artist, or other criteria. Uses Last.fm for mood matching and similar song recommendations when available.",
     inputSchema: {
       type: "object",
       properties: {
         name: { type: "string", description: "Playlist name" },
-        mood: { type: "string", description: "Mood/theme (e.g., 'energetic', 'chill', 'melancholic', 'happy', 'focus', 'romantic')" },
+        mood: {
+          type: "string",
+          description:
+            "Mood/theme (e.g., 'energetic', 'chill', 'melancholic', 'happy', 'focus', 'romantic')",
+        },
         genre: { type: "string", description: "Genre filter (e.g., 'Rock', 'Electronic', 'Jazz')" },
         artist: { type: "string", description: "Focus on songs by this artist" },
         album: { type: "string", description: "Focus on songs from this album" },
         fromYear: { type: "number", description: "Minimum year for songs" },
         toYear: { type: "number", description: "Maximum year for songs" },
         songCount: { type: "number", description: "Number of songs to include (default: 20)" },
-        includeUserFavorites: { type: "boolean", description: "Prioritize user's loved/top tracks from Last.fm" },
+        includeUserFavorites: {
+          type: "boolean",
+          description: "Prioritize user's loved/top tracks from Last.fm",
+        },
         discoverNew: { type: "boolean", description: "Include similar artists for discovery" },
-        minTagMatch: { type: "number", description: "Minimum tag match score 0-100 for mood matching (default: 30)" },
+        minTagMatch: {
+          type: "number",
+          description: "Minimum tag match score 0-100 for mood matching (default: 30)",
+        },
       },
       required: ["name"],
     },
   },
+  shellTool,
 ];
 
 export class ToolRegistry {
@@ -325,6 +401,7 @@ export class ToolRegistry {
   private memoryRepo: MemoryRepository | null = null;
   private subsonicService: SubsonicService | null = null;
   private lastfmService: LastfmService | null = null;
+  private shellEnvironment: ShellEnvironment | null = null;
 
   setBraveService(service: BraveSearchService | null): void {
     this.braveService = service;
@@ -332,6 +409,10 @@ export class ToolRegistry {
 
   setCalendarService(service: CalendarService | null): void {
     this.calendarService = service;
+  }
+
+  setShellEnvironment(env: ShellEnvironment | null): void {
+    this.shellEnvironment = env;
   }
 
   setMemoryRepo(repo: MemoryRepository | null): void {
@@ -407,19 +488,52 @@ export class ToolRegistry {
           result = await this.executeListCalendars();
           break;
         case "get_calendar_events":
-          result = await this.executeGetCalendarEvents(input as { startDate?: string; endDate?: string; days?: number; calendar?: string });
+          result = await this.executeGetCalendarEvents(
+            input as { startDate?: string; endDate?: string; days?: number; calendar?: string },
+          );
           break;
         case "create_calendar_event":
-          result = await this.executeCreateCalendarEvent(input as { summary: string; start: string; end: string; description?: string; location?: string; timezone?: string; calendar?: string });
+          result = await this.executeCreateCalendarEvent(
+            input as {
+              summary: string;
+              start: string;
+              end: string;
+              description?: string;
+              location?: string;
+              timezone?: string;
+              calendar?: string;
+            },
+          );
           break;
         case "update_calendar_event":
-          result = await this.executeUpdateCalendarEvent(input as { eventUrl: string; etag: string; summary: string; start: string; end: string; description?: string; location?: string; timezone?: string; calendar?: string });
+          result = await this.executeUpdateCalendarEvent(
+            input as {
+              eventUrl: string;
+              etag: string;
+              summary: string;
+              start: string;
+              end: string;
+              description?: string;
+              location?: string;
+              timezone?: string;
+              calendar?: string;
+            },
+          );
           break;
         case "delete_calendar_event":
-          result = await this.executeDeleteCalendarEvent(input as { eventUrl: string; etag: string; confirm: boolean });
+          result = await this.executeDeleteCalendarEvent(
+            input as { eventUrl: string; etag: string; confirm: boolean },
+          );
           break;
         case "search_music":
-          result = await this.executeSearchMusic(input as { query: string; songCount?: number; albumCount?: number; artistCount?: number });
+          result = await this.executeSearchMusic(
+            input as {
+              query: string;
+              songCount?: number;
+              albumCount?: number;
+              artistCount?: number;
+            },
+          );
           break;
         case "get_music_library_info":
           result = await this.executeGetMusicLibraryInfo(input as { type?: string });
@@ -428,10 +542,38 @@ export class ToolRegistry {
           result = await this.executeListPlaylists(input as { includeSongs?: boolean });
           break;
         case "manage_playlist":
-          result = await this.executeManagePlaylist(input as { action: string; playlistId?: string; name?: string; songIds?: string[]; songIdsToAdd?: string[]; comment?: string; isPublic?: boolean; confirm?: boolean });
+          result = await this.executeManagePlaylist(
+            input as {
+              action: string;
+              playlistId?: string;
+              name?: string;
+              songIds?: string[];
+              songIdsToAdd?: string[];
+              comment?: string;
+              isPublic?: boolean;
+              confirm?: boolean;
+            },
+          );
           break;
         case "create_smart_playlist":
-          result = await this.executeCreateSmartPlaylist(input as { name: string; mood?: string; genre?: string; artist?: string; album?: string; fromYear?: number; toYear?: number; songCount?: number; includeUserFavorites?: boolean; discoverNew?: boolean; minTagMatch?: number });
+          result = await this.executeCreateSmartPlaylist(
+            input as {
+              name: string;
+              mood?: string;
+              genre?: string;
+              artist?: string;
+              album?: string;
+              fromYear?: number;
+              toYear?: number;
+              songCount?: number;
+              includeUserFavorites?: boolean;
+              discoverNew?: boolean;
+              minTagMatch?: number;
+            },
+          );
+          break;
+        case "shell":
+          result = await this.executeShell(input as ShellToolInput);
           break;
         default:
           result = { tool, success: false, error: `Unknown tool: ${tool}` };
@@ -441,8 +583,8 @@ export class ToolRegistry {
     if (result.success) {
       console.log(`[TOOL RESULT] ${tool}: success`);
       if (result.output !== undefined) {
-        const outputStr = typeof result.output === "string" 
-          ? result.output 
+        const outputStr = typeof result.output === "string"
+          ? result.output
           : JSON.stringify(result.output, null, 2);
         console.log(`[TOOL OUTPUT] ${outputStr}`);
       }
@@ -486,7 +628,11 @@ export class ToolRegistry {
       const results = await this.braveService.search(input.query);
       return { tool: "web_search", success: true, output: results.results };
     } catch (error) {
-      return { tool: "web_search", success: false, error: error instanceof Error ? error.message : "Search failed" };
+      return {
+        tool: "web_search",
+        success: false,
+        error: error instanceof Error ? error.message : "Search failed",
+      };
     }
   }
 
@@ -510,7 +656,11 @@ export class ToolRegistry {
       const result = Function(`"use strict"; return (${sanitized})`)();
       return { tool: "calculate", success: true, output: result };
     } catch (error) {
-      return { tool: "calculate", success: false, error: `Calculation error: ${error instanceof Error ? error.message : "Unknown error"}` };
+      return {
+        tool: "calculate",
+        success: false,
+        error: `Calculation error: ${error instanceof Error ? error.message : "Unknown error"}`,
+      };
     }
   }
 
@@ -520,15 +670,27 @@ export class ToolRegistry {
     }
 
     try {
-      const validCategories: MemoryCategory[] = ["preference", "fact", "conversation", "task", "reminder", "note", "general"];
+      const validCategories: MemoryCategory[] = [
+        "preference",
+        "fact",
+        "conversation",
+        "task",
+        "reminder",
+        "note",
+        "general",
+      ];
       const category = input.category && validCategories.includes(input.category as MemoryCategory)
         ? input.category as MemoryCategory
         : "general";
-      
+
       this.memoryRepo.create({ content: input.content, category });
       return { tool: "remember", success: true, output: "Memory stored successfully" };
     } catch (error) {
-      return { tool: "remember", success: false, error: error instanceof Error ? error.message : "Failed to store memory" };
+      return {
+        tool: "remember",
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to store memory",
+      };
     }
   }
 
@@ -541,7 +703,37 @@ export class ToolRegistry {
       const memories = this.memoryRepo.search({ query: input.query, limit: 5 });
       return { tool: "recall", success: true, output: memories };
     } catch (error) {
-      return { tool: "recall", success: false, error: error instanceof Error ? error.message : "Failed to search memory" };
+      return {
+        tool: "recall",
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to search memory",
+      };
+    }
+  }
+
+  private async executeShell(input: ShellToolInput): Promise<ToolResult> {
+    if (!this.shellEnvironment) {
+      return { tool: "shell", success: false, error: "Shell environment not configured" };
+    }
+
+    try {
+      const result = await executeShellCommand(this.shellEnvironment, input);
+      return {
+        tool: "shell",
+        success: result.exitCode === 0,
+        output: {
+          stdout: result.stdout,
+          stderr: result.stderr,
+          exitCode: result.exitCode,
+        },
+        error: result.exitCode !== 0 ? result.stderr : undefined,
+      };
+    } catch (error) {
+      return {
+        tool: "shell",
+        success: false,
+        error: error instanceof Error ? error.message : "Shell execution failed",
+      };
     }
   }
 
@@ -553,13 +745,21 @@ export class ToolRegistry {
       }
 
       if (scheduledFor <= new Date()) {
-        return { tool: "schedule_task", success: false, error: "scheduledFor must be in the future" };
+        return {
+          tool: "schedule_task",
+          success: false,
+          error: "scheduledFor must be in the future",
+        };
       }
 
       if (input.recurrence) {
         const cronValidation = validateCron(input.recurrence);
         if (!cronValidation.valid) {
-          return { tool: "schedule_task", success: false, error: `Invalid cron expression: ${cronValidation.error}` };
+          return {
+            tool: "schedule_task",
+            success: false,
+            error: `Invalid cron expression: ${cronValidation.error}`,
+          };
         }
       }
 
@@ -569,24 +769,40 @@ export class ToolRegistry {
       switch (taskType) {
         case "notification":
           if (!input.message) {
-            return { tool: "schedule_task", success: false, error: "message is required for notification type" };
+            return {
+              tool: "schedule_task",
+              success: false,
+              error: "message is required for notification type",
+            };
           }
           payload = { message: input.message };
           break;
         case "skill":
           if (!input.skillName) {
-            return { tool: "schedule_task", success: false, error: "skillName is required for skill type" };
+            return {
+              tool: "schedule_task",
+              success: false,
+              error: "skillName is required for skill type",
+            };
           }
           payload = { skillName: input.skillName, input: input.skillInput || {} };
           break;
         case "agent":
           if (!input.prompt) {
-            return { tool: "schedule_task", success: false, error: "prompt is required for agent type" };
+            return {
+              tool: "schedule_task",
+              success: false,
+              error: "prompt is required for agent type",
+            };
           }
           payload = { prompt: input.prompt };
           break;
         default:
-          return { tool: "schedule_task", success: false, error: `Invalid task type: ${input.type}` };
+          return {
+            tool: "schedule_task",
+            success: false,
+            error: `Invalid task type: ${input.type}`,
+          };
       }
 
       const taskRepo = getTaskRepository();
@@ -601,7 +817,11 @@ export class ToolRegistry {
       const task = taskRepo.create(createInput);
 
       if (input.storeInMemory && this.memoryRepo) {
-        const memoryContent = `Scheduled ${input.recurrence ? "recurring" : "one-time"} ${input.type} task for ${scheduledFor.toISOString()}${input.recurrence ? ` (cron: ${input.recurrence})` : ""}`;
+        const memoryContent = `Scheduled ${
+          input.recurrence ? "recurring" : "one-time"
+        } ${input.type} task for ${scheduledFor.toISOString()}${
+          input.recurrence ? ` (cron: ${input.recurrence})` : ""
+        }`;
         this.memoryRepo.create({ content: memoryContent, category: "task" });
       }
 
@@ -610,12 +830,18 @@ export class ToolRegistry {
         type: task.type,
         scheduledFor: task.scheduledFor.toISOString(),
         recurrence: task.recurrence,
-        nextOccurrence: input.recurrence ? getNextOccurrence(input.recurrence)?.toISOString() : null,
+        nextOccurrence: input.recurrence
+          ? getNextOccurrence(input.recurrence)?.toISOString()
+          : null,
       };
 
       return { tool: "schedule_task", success: true, output: response };
     } catch (error) {
-      return { tool: "schedule_task", success: false, error: error instanceof Error ? error.message : "Failed to schedule task" };
+      return {
+        tool: "schedule_task",
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to schedule task",
+      };
     }
   }
 
@@ -623,7 +849,7 @@ export class ToolRegistry {
     try {
       const taskRepo = getTaskRepository();
       const limit = input.limit || 10;
-      let tasks;
+      let tasks: ReturnType<typeof taskRepo.query>;
 
       switch (input.status) {
         case "pending":
@@ -648,7 +874,11 @@ export class ToolRegistry {
 
       return { tool: "list_scheduled_tasks", success: true, output };
     } catch (error) {
-      return { tool: "list_scheduled_tasks", success: false, error: error instanceof Error ? error.message : "Failed to list tasks" };
+      return {
+        tool: "list_scheduled_tasks",
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to list tasks",
+      };
     }
   }
 
@@ -662,18 +892,30 @@ export class ToolRegistry {
       }
 
       if (task.status !== "pending") {
-        return { tool: "cancel_task", success: false, error: `Cannot cancel task with status: ${task.status}` };
+        return {
+          tool: "cancel_task",
+          success: false,
+          error: `Cannot cancel task with status: ${task.status}`,
+        };
       }
 
       const deleted = taskRepo.delete(input.taskId);
-      
+
       if (deleted) {
-        return { tool: "cancel_task", success: true, output: { taskId: input.taskId, cancelled: true } };
+        return {
+          tool: "cancel_task",
+          success: true,
+          output: { taskId: input.taskId, cancelled: true },
+        };
       } else {
         return { tool: "cancel_task", success: false, error: "Failed to delete task" };
       }
     } catch (error) {
-      return { tool: "cancel_task", success: false, error: error instanceof Error ? error.message : "Failed to cancel task" };
+      return {
+        tool: "cancel_task",
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to cancel task",
+      };
     }
   }
 
@@ -686,17 +928,28 @@ export class ToolRegistry {
       const calendars = await this.calendarService.listCalendars();
       return { tool: "list_calendars", success: true, output: calendars };
     } catch (error) {
-      return { tool: "list_calendars", success: false, error: error instanceof Error ? error.message : "Failed to list calendars" };
+      return {
+        tool: "list_calendars",
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to list calendars",
+      };
     }
   }
 
-  private async executeGetCalendarEvents(input: { startDate?: string; endDate?: string; days?: number; calendar?: string }): Promise<ToolResult> {
+  private async executeGetCalendarEvents(
+    input: { startDate?: string; endDate?: string; days?: number; calendar?: string },
+  ): Promise<ToolResult> {
     if (!this.calendarService) {
-      return { tool: "get_calendar_events", success: false, error: "Calendar service not configured" };
+      return {
+        tool: "get_calendar_events",
+        success: false,
+        error: "Calendar service not configured",
+      };
     }
 
     try {
-      const options: { startDate?: string; endDate?: string; days?: number; calendar?: string } = {};
+      const options: { startDate?: string; endDate?: string; days?: number; calendar?: string } =
+        {};
       if (input.startDate !== undefined) options.startDate = input.startDate;
       if (input.endDate !== undefined) options.endDate = input.endDate;
       if (input.days !== undefined) options.days = input.days;
@@ -704,17 +957,42 @@ export class ToolRegistry {
       const events = await this.calendarService.getEvents(options);
       return { tool: "get_calendar_events", success: true, output: events };
     } catch (error) {
-      return { tool: "get_calendar_events", success: false, error: error instanceof Error ? error.message : "Failed to get events" };
+      return {
+        tool: "get_calendar_events",
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to get events",
+      };
     }
   }
 
-  private async executeCreateCalendarEvent(input: { summary: string; start: string; end: string; description?: string; location?: string; timezone?: string; calendar?: string }): Promise<ToolResult> {
+  private async executeCreateCalendarEvent(
+    input: {
+      summary: string;
+      start: string;
+      end: string;
+      description?: string;
+      location?: string;
+      timezone?: string;
+      calendar?: string;
+    },
+  ): Promise<ToolResult> {
     if (!this.calendarService) {
-      return { tool: "create_calendar_event", success: false, error: "Calendar service not configured" };
+      return {
+        tool: "create_calendar_event",
+        success: false,
+        error: "Calendar service not configured",
+      };
     }
 
     try {
-      const eventInput: { summary: string; start: string; end: string; description?: string; location?: string; timezone?: string } = {
+      const eventInput: {
+        summary: string;
+        start: string;
+        end: string;
+        description?: string;
+        location?: string;
+        timezone?: string;
+      } = {
         summary: input.summary,
         start: input.start,
         end: input.end,
@@ -725,17 +1003,46 @@ export class ToolRegistry {
       const event = await this.calendarService.createEvent(eventInput, input.calendar);
       return { tool: "create_calendar_event", success: true, output: event };
     } catch (error) {
-      return { tool: "create_calendar_event", success: false, error: error instanceof Error ? error.message : "Failed to create event" };
+      return {
+        tool: "create_calendar_event",
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to create event",
+      };
     }
   }
 
-  private async executeUpdateCalendarEvent(input: { eventUrl: string; etag: string; summary: string; start: string; end: string; description?: string; location?: string; timezone?: string; calendar?: string }): Promise<ToolResult> {
+  private async executeUpdateCalendarEvent(
+    input: {
+      eventUrl: string;
+      etag: string;
+      summary: string;
+      start: string;
+      end: string;
+      description?: string;
+      location?: string;
+      timezone?: string;
+      calendar?: string;
+    },
+  ): Promise<ToolResult> {
     if (!this.calendarService) {
-      return { tool: "update_calendar_event", success: false, error: "Calendar service not configured" };
+      return {
+        tool: "update_calendar_event",
+        success: false,
+        error: "Calendar service not configured",
+      };
     }
 
     try {
-      const eventInput: { eventUrl: string; etag: string; summary: string; start: string; end: string; description?: string; location?: string; timezone?: string } = {
+      const eventInput: {
+        eventUrl: string;
+        etag: string;
+        summary: string;
+        start: string;
+        end: string;
+        description?: string;
+        location?: string;
+        timezone?: string;
+      } = {
         eventUrl: input.eventUrl,
         etag: input.etag,
         summary: input.summary,
@@ -748,28 +1055,52 @@ export class ToolRegistry {
       const event = await this.calendarService.updateEvent(eventInput, input.calendar);
       return { tool: "update_calendar_event", success: true, output: event };
     } catch (error) {
-      return { tool: "update_calendar_event", success: false, error: error instanceof Error ? error.message : "Failed to update event" };
+      return {
+        tool: "update_calendar_event",
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to update event",
+      };
     }
   }
 
-  private async executeDeleteCalendarEvent(input: { eventUrl: string; etag: string; confirm: boolean }): Promise<ToolResult> {
+  private async executeDeleteCalendarEvent(
+    input: { eventUrl: string; etag: string; confirm: boolean },
+  ): Promise<ToolResult> {
     if (!this.calendarService) {
-      return { tool: "delete_calendar_event", success: false, error: "Calendar service not configured" };
+      return {
+        tool: "delete_calendar_event",
+        success: false,
+        error: "Calendar service not configured",
+      };
     }
 
     if (!input.confirm) {
-      return { tool: "delete_calendar_event", success: false, error: "Deletion not confirmed. Set confirm=true to proceed with deletion." };
+      return {
+        tool: "delete_calendar_event",
+        success: false,
+        error: "Deletion not confirmed. Set confirm=true to proceed with deletion.",
+      };
     }
 
     try {
       await this.calendarService.deleteEvent(input.eventUrl, input.etag);
-      return { tool: "delete_calendar_event", success: true, output: { eventUrl: input.eventUrl, deleted: true } };
+      return {
+        tool: "delete_calendar_event",
+        success: true,
+        output: { eventUrl: input.eventUrl, deleted: true },
+      };
     } catch (error) {
-      return { tool: "delete_calendar_event", success: false, error: error instanceof Error ? error.message : "Failed to delete event" };
+      return {
+        tool: "delete_calendar_event",
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to delete event",
+      };
     }
   }
 
-  private async executeSearchMusic(input: { query: string; songCount?: number; albumCount?: number; artistCount?: number }): Promise<ToolResult> {
+  private async executeSearchMusic(
+    input: { query: string; songCount?: number; albumCount?: number; artistCount?: number },
+  ): Promise<ToolResult> {
     if (!this.subsonicService) {
       return { tool: "search_music", success: false, error: "Music service not configured" };
     }
@@ -784,13 +1115,21 @@ export class ToolRegistry {
 
       return { tool: "search_music", success: true, output: results };
     } catch (error) {
-      return { tool: "search_music", success: false, error: error instanceof Error ? error.message : "Search failed" };
+      return {
+        tool: "search_music",
+        success: false,
+        error: error instanceof Error ? error.message : "Search failed",
+      };
     }
   }
 
   private async executeGetMusicLibraryInfo(input: { type?: string }): Promise<ToolResult> {
     if (!this.subsonicService) {
-      return { tool: "get_music_library_info", success: false, error: "Music service not configured" };
+      return {
+        tool: "get_music_library_info",
+        success: false,
+        error: "Music service not configured",
+      };
     }
 
     try {
@@ -809,7 +1148,11 @@ export class ToolRegistry {
 
       return { tool: "get_music_library_info", success: true, output };
     } catch (error) {
-      return { tool: "get_music_library_info", success: false, error: error instanceof Error ? error.message : "Failed to get library info" };
+      return {
+        tool: "get_music_library_info",
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to get library info",
+      };
     }
   }
 
@@ -830,26 +1173,30 @@ export class ToolRegistry {
             } catch {
               return { ...playlist, songs: [] };
             }
-          })
+          }),
         );
         return { tool: "list_playlists", success: true, output: playlistsWithSongs };
       }
 
       return { tool: "list_playlists", success: true, output: playlists };
     } catch (error) {
-      return { tool: "list_playlists", success: false, error: error instanceof Error ? error.message : "Failed to list playlists" };
+      return {
+        tool: "list_playlists",
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to list playlists",
+      };
     }
   }
 
-  private async executeManagePlaylist(input: { 
-    action: string; 
-    playlistId?: string; 
-    name?: string; 
-    songIds?: string[]; 
+  private async executeManagePlaylist(input: {
+    action: string;
+    playlistId?: string;
+    name?: string;
+    songIds?: string[];
     songIdsToAdd?: string[];
-    comment?: string; 
-    isPublic?: boolean; 
-    confirm?: boolean 
+    comment?: string;
+    isPublic?: boolean;
+    confirm?: boolean;
   }): Promise<ToolResult> {
     if (!this.subsonicService) {
       return { tool: "manage_playlist", success: false, error: "Music service not configured" };
@@ -859,14 +1206,29 @@ export class ToolRegistry {
       switch (input.action) {
         case "create": {
           if (!input.name) {
-            return { tool: "manage_playlist", success: false, error: "Playlist name is required for create action" };
+            return {
+              tool: "manage_playlist",
+              success: false,
+              error: "Playlist name is required for create action",
+            };
           }
-          const playlist = await this.subsonicService.createPlaylist(input.name, input.songIds ?? []);
-          return { tool: "manage_playlist", success: true, output: { action: "created", playlist } };
+          const playlist = await this.subsonicService.createPlaylist(
+            input.name,
+            input.songIds ?? [],
+          );
+          return {
+            tool: "manage_playlist",
+            success: true,
+            output: { action: "created", playlist },
+          };
         }
         case "update": {
           if (!input.playlistId) {
-            return { tool: "manage_playlist", success: false, error: "Playlist ID is required for update action" };
+            return {
+              tool: "manage_playlist",
+              success: false,
+              error: "Playlist ID is required for update action",
+            };
           }
           await this.subsonicService.updatePlaylist(input.playlistId, {
             name: input.name,
@@ -874,23 +1236,47 @@ export class ToolRegistry {
             public: input.isPublic,
             songIdsToAdd: input.songIdsToAdd,
           });
-          return { tool: "manage_playlist", success: true, output: { action: "updated", playlistId: input.playlistId } };
+          return {
+            tool: "manage_playlist",
+            success: true,
+            output: { action: "updated", playlistId: input.playlistId },
+          };
         }
         case "delete": {
           if (!input.playlistId) {
-            return { tool: "manage_playlist", success: false, error: "Playlist ID is required for delete action" };
+            return {
+              tool: "manage_playlist",
+              success: false,
+              error: "Playlist ID is required for delete action",
+            };
           }
           if (!input.confirm) {
-            return { tool: "manage_playlist", success: false, error: "Deletion not confirmed. Set confirm=true to proceed." };
+            return {
+              tool: "manage_playlist",
+              success: false,
+              error: "Deletion not confirmed. Set confirm=true to proceed.",
+            };
           }
           await this.subsonicService.deletePlaylist(input.playlistId);
-          return { tool: "manage_playlist", success: true, output: { action: "deleted", playlistId: input.playlistId } };
+          return {
+            tool: "manage_playlist",
+            success: true,
+            output: { action: "deleted", playlistId: input.playlistId },
+          };
         }
         default:
-          return { tool: "manage_playlist", success: false, error: `Unknown action: ${input.action}` };
+          return {
+            tool: "manage_playlist",
+            success: false,
+            error: `Unknown action: ${input.action}`,
+          };
       }
     } catch (error) {
-      return { tool: "manage_playlist", success: false, error: error instanceof Error ? error.message : "Playlist operation failed" };
+      return {
+        tool: "manage_playlist",
+        success: false,
+        error: error instanceof Error ? error.message : "Playlist operation failed",
+      };
     }
   }
 
@@ -908,13 +1294,17 @@ export class ToolRegistry {
     minTagMatch?: number;
   }): Promise<ToolResult> {
     if (!this.subsonicService) {
-      return { tool: "create_smart_playlist", success: false, error: "Music service not configured" };
+      return {
+        tool: "create_smart_playlist",
+        success: false,
+        error: "Music service not configured",
+      };
     }
 
     try {
       const targetSongCount = input.songCount ?? 20;
       const minTagMatch = input.minTagMatch ?? 30;
-      
+
       interface CandidateSong {
         id: string;
         title: string;
@@ -924,18 +1314,18 @@ export class ToolRegistry {
         score: number;
         tagMatchScore?: number;
       }
-      
+
       const candidateSongs: Map<string, CandidateSong> = new Map();
 
       const targetMoodTags = input.mood ? getMoodTags(input.mood) : [];
 
       if (input.mood && this.lastfmService) {
         const moodTags = [input.mood.toLowerCase(), ...targetMoodTags.slice(0, 2)];
-        
+
         for (const tag of moodTags.slice(0, 3)) {
           try {
             const lastfmTracks = await this.lastfmService.getTopTracksForTag(tag, 50);
-            
+
             for (const track of lastfmTracks) {
               const searchResults = await this.subsonicService!.search3({
                 query: `${track.artist} ${track.name}`,
@@ -943,7 +1333,7 @@ export class ToolRegistry {
                 albumCount: 0,
                 artistCount: 0,
               });
-              
+
               for (const song of searchResults.song ?? []) {
                 if (!candidateSongs.has(song.id)) {
                   candidateSongs.set(song.id, {
@@ -974,7 +1364,7 @@ export class ToolRegistry {
         for (const song of searchResults.song ?? []) {
           const artistMatch = song.artist?.toLowerCase().includes(input.artist.toLowerCase());
           const score = artistMatch ? 80 : 40;
-          
+
           if (!candidateSongs.has(song.id)) {
             candidateSongs.set(song.id, {
               id: song.id,
@@ -993,10 +1383,10 @@ export class ToolRegistry {
         if (this.lastfmService && input.discoverNew) {
           try {
             const similarArtists = await this.lastfmService.getSimilarArtists(input.artist, 5);
-            
+
             for (const simArtist of similarArtists.slice(0, 3)) {
               const topTracks = await this.lastfmService.getArtistTopTracks(simArtist.name, 10);
-              
+
               for (const track of topTracks) {
                 const results = await this.subsonicService!.search3({
                   query: `${track.artist} ${track.name}`,
@@ -1004,7 +1394,7 @@ export class ToolRegistry {
                   albumCount: 0,
                   artistCount: 0,
                 });
-                
+
                 for (const song of results.song ?? []) {
                   if (!candidateSongs.has(song.id)) {
                     candidateSongs.set(song.id, {
@@ -1028,7 +1418,7 @@ export class ToolRegistry {
       if (input.genre) {
         try {
           const songs = await this.subsonicService.getSongsByGenre(input.genre, 50);
-          
+
           for (const song of songs) {
             if (!candidateSongs.has(song.id)) {
               candidateSongs.set(song.id, {
@@ -1052,7 +1442,7 @@ export class ToolRegistry {
       if (input.includeUserFavorites && this.lastfmService) {
         try {
           const lovedTracks = await this.lastfmService.getUserLovedTracks(30);
-          
+
           for (const track of lovedTracks) {
             const results = await this.subsonicService!.search3({
               query: `${track.artist} ${track.name}`,
@@ -1060,7 +1450,7 @@ export class ToolRegistry {
               albumCount: 0,
               artistCount: 0,
             });
-            
+
             for (const song of results.song ?? []) {
               if (!candidateSongs.has(song.id)) {
                 candidateSongs.set(song.id, {
@@ -1089,7 +1479,7 @@ export class ToolRegistry {
           fromYear: input.fromYear,
           toYear: input.toYear,
         });
-        
+
         for (const song of randomSongs) {
           if (!candidateSongs.has(song.id)) {
             candidateSongs.set(song.id, {
@@ -1107,10 +1497,14 @@ export class ToolRegistry {
       let filteredSongs = Array.from(candidateSongs.values());
 
       if (input.fromYear !== undefined) {
-        filteredSongs = filteredSongs.filter((s) => s.year === undefined || s.year >= input.fromYear!);
+        filteredSongs = filteredSongs.filter((s) =>
+          s.year === undefined || s.year >= input.fromYear!
+        );
       }
       if (input.toYear !== undefined) {
-        filteredSongs = filteredSongs.filter((s) => s.year === undefined || s.year <= input.toYear!);
+        filteredSongs = filteredSongs.filter((s) =>
+          s.year === undefined || s.year <= input.toYear!
+        );
       }
 
       if (input.mood && this.lastfmService && targetMoodTags.length > 0) {
@@ -1123,7 +1517,7 @@ export class ToolRegistry {
             } catch {
               return { ...song, tagMatchScore: 0 };
             }
-          })
+          }),
         );
 
         filteredSongs = songsWithTags
@@ -1138,11 +1532,13 @@ export class ToolRegistry {
 
       for (const song of filteredSongs) {
         if (selectedSongs.length >= targetSongCount) break;
-        
+
         const artistKey = song.artist.toLowerCase();
         const count = artistCount.get(artistKey) ?? 0;
-        
-        if (count < Math.ceil(targetSongCount / 5) || selectedSongs.length > targetSongCount * 0.8) {
+
+        if (
+          count < Math.ceil(targetSongCount / 5) || selectedSongs.length > targetSongCount * 0.8
+        ) {
           selectedSongs.push(song);
           artistCount.set(artistKey, count + 1);
         }
@@ -1167,14 +1563,18 @@ export class ToolRegistry {
             mood: input.mood,
             genre: input.genre,
             artist: input.artist,
-            yearRange: input.fromYear || input.toYear 
+            yearRange: input.fromYear || input.toYear
               ? { from: input.fromYear, to: input.toYear }
               : undefined,
           },
         },
       };
     } catch (error) {
-      return { tool: "create_smart_playlist", success: false, error: error instanceof Error ? error.message : "Failed to create smart playlist" };
+      return {
+        tool: "create_smart_playlist",
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to create smart playlist",
+      };
     }
   }
 }

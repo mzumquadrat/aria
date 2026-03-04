@@ -1,5 +1,5 @@
 import { loadConfig, validateConfig } from "./config/mod.ts";
-import { initializeDatabase, closeDatabase } from "./storage/mod.ts";
+import { closeDatabase, initializeDatabase } from "./storage/mod.ts";
 import { createBot, setupBot, startBot, stopBot } from "./bot/mod.ts";
 import { createElevenLabsService } from "./elevenlabs/mod.ts";
 import { createBraveSearchService } from "./brave/mod.ts";
@@ -9,9 +9,10 @@ import { createLastfmService, LastfmCache } from "./lastfm/mod.ts";
 import { initializeAgent } from "./agent/mod.ts";
 import { toolRegistry } from "./agent/tools.ts";
 import { getMemoryRepository } from "./storage/memory/mod.ts";
-import { initializeScheduler, getScheduler } from "./scheduler/mod.ts";
+import { getScheduler, initializeScheduler } from "./scheduler/mod.ts";
 import { initializeMessaging } from "./bot/messaging.ts";
 import { getDatabase } from "./storage/mod.ts";
+import { createShellEnvironment } from "./shell/mod.ts";
 
 let isShuttingDown = false;
 
@@ -68,27 +69,33 @@ async function main(): Promise<void> {
     console.log("Subsonic not configured - music features disabled");
   }
 
+  if (config.shell && config.shell.mounts.length > 0) {
+    const shellEnv = createShellEnvironment(config.shell);
+    toolRegistry.setShellEnvironment(shellEnv);
+    console.log(`Shell environment initialized with ${config.shell.mounts.length} mount(s)`);
+  } else {
+    console.log("Shell not configured - shell commands disabled");
+  }
+
   const memoryRepo = getMemoryRepository();
   toolRegistry.setMemoryRepo(memoryRepo);
   console.log("Memory service initialized");
 
   const bot = createBot(config);
-  
-  const elevenLabs = config.elevenlabs 
-    ? createElevenLabsService(config.elevenlabs) 
-    : undefined;
-  
+
+  const elevenLabs = config.elevenlabs ? createElevenLabsService(config.elevenlabs) : undefined;
+
   if (elevenLabs) {
     console.log("ElevenLabs service initialized");
   } else {
     console.log("ElevenLabs not configured - voice features disabled");
   }
-  
+
   setupBot(bot, config, elevenLabs);
   console.log("Bot configured");
 
   initializeMessaging(bot, config);
-  
+
   const schedulerConfig = {
     checkInterval: config.scheduler?.checkInterval ?? 1000,
     maxConcurrent: config.scheduler?.maxConcurrent ?? 5,
@@ -109,15 +116,15 @@ function setupShutdownHandlers(bot: ReturnType<typeof createBot>): void {
     isShuttingDown = true;
 
     console.log("\nShutting down gracefully...");
-    
+
     const scheduler = getScheduler();
     if (scheduler) {
       scheduler.stop();
     }
-    
+
     stopBot(bot);
     closeDatabase();
-    
+
     console.log("Goodbye!");
     Deno.exit(0);
   };

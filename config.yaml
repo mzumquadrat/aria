@@ -11,7 +11,7 @@
 telegram:
   # Your bot token from @BotFather
   bot_token: ${TELEGRAM_BOT_TOKEN}
-  
+
   # Restrict bot access to this Telegram user ID
   # Get your ID from @userinfobot
   # Leave empty to allow all users (not recommended for production)
@@ -23,18 +23,18 @@ telegram:
 openrouter:
   # API key from https://openrouter.ai
   api_key: ${OPENROUTER_API_KEY}
-  
+
   # Primary model for conversations
   # Options: anthropic/claude-sonnet-4, openai/gpt-4o, etc.
   default_model: anthropic/claude-sonnet-4
-  
+
   # Fallback model if primary fails
   fallback_model: openai/gpt-4o-mini
-  
+
   # Maximum tokens for LLM responses (default: 4096)
   # Increase for longer responses, decrease to save costs
   max_tokens: ${OPENROUTER_MAX_TOKENS:-4096}
-  
+
   # HTTP referer for OpenRouter analytics (optional)
   http_referer: ${HTTP_REFERER:-https://github.com/mzumquadrat/aria}
 
@@ -44,15 +44,15 @@ openrouter:
 # Enable voice message transcription and TTS responses
 elevenlabs:
   api_key: ${ELEVENLABS_API_KEY:-}
-  
+
   # Voice for text-to-speech
   # Browse voices at https://elevenlabs.io/voice-library
   # Popular: Rachel (21m00Tcm4TlvDq8ikWAM), Adam (onwK4e9ZLuTADq8NiFz7)
   voice_id: ${ELEVENLABS_VOICE_ID:-21m00Tcm4TlvDq8ikWAM}
-  
+
   # TTS model: eleven_multilingual_v2 (recommended) or eleven_monolingual_v1
   model_id: ${ELEVENLABS_MODEL_ID:-eleven_multilingual_v2}
-  
+
   # STT (speech-to-text) model: scribe_v1, scribe_v1_experimental, scribe_v2
   stt_model_id: ${ELEVENLABS_STT_MODEL_ID:-scribe_v1}
 
@@ -62,10 +62,10 @@ elevenlabs:
 # Enable web search capability for the agent
 brave:
   api_key: ${BRAVE_API_KEY:-}
-  
+
   # API endpoint (usually doesn't need changing)
   base_url: https://api.search.brave.com/res/v1
-  
+
   # Number of results to return per search
   count: 10
 
@@ -79,82 +79,64 @@ calendar:
   caldav:
     # Server URL (e.g., https://caldav.icloud.com for iCloud)
     server_url: ${CALDAV_SERVER_URL:-}
-    
+
     # Username (Apple ID for iCloud)
     username: ${CALDAV_USERNAME:-}
-    
+
     # Password (app-specific password for iCloud)
     # For iCloud: Generate at https://appleid.apple.com > Security > App-Specific Passwords
     password: ${CALDAV_PASSWORD:-}
-    
+
     # Default calendar to use (optional, uses first available if not set)
     default_calendar: ${CALDAV_DEFAULT_CALENDAR:-}
-  
+
   # Google Calendar provider
   google:
     # OAuth 2.0 access token
     access_token: ${GOOGLE_CALENDAR_ACCESS_TOKEN:-}
-    
+
     # Refresh token (for automatic token renewal)
     refresh_token: ${GOOGLE_CALENDAR_REFRESH_TOKEN:-}
-    
+
     # OAuth client credentials (for token refresh)
     client_id: ${GOOGLE_CALENDAR_CLIENT_ID:-}
     client_secret: ${GOOGLE_CALENDAR_CLIENT_SECRET:-}
-    
+
     # Default calendar (usually 'primary')
     default_calendar: ${GOOGLE_CALENDAR_DEFAULT:-primary}
 
 # -------------------------------------------
 # Shell Execution Policy
 # -------------------------------------------
-# Controls what commands skills can execute
+# Controls bash command execution in sandboxed environment
 shell:
-  # Directories where skills can read/write
-  allowed_directories:
-    - ~/projects
-    - ~/documents
-    - ~/downloads
-  
-  # Directories that are always blocked
-  denied_directories:
-    - /etc
-    - /root
-    - ~/.ssh
-    - ~/.gnupg
-  
-  # Commands skills are allowed to run
-  # Leave empty to allow all (not recommended)
-  allowed_commands:
-    - ls
-    - cat
-    - head
-    - tail
-    - grep
-    - find
-    - git
-    - npm
-    - deno
-    - python3
-    - node
-  
-  # Commands that are always blocked
-  denied_commands:
-    - rm -rf /
-    - rm -rf /*
-    - sudo
-    - chmod 777
-    - chown
-    - mkfs
-    - dd
-  
+  # Filesystem mounts - each mount provides access to a host directory
+  # mode: "ro" for read-only, "rw" for read-write
+  mounts:
+    - path: ~/projects
+      mountPoint: /workspace
+      mode: rw
+    - path: ~/documents
+      mountPoint: /docs
+      mode: ro
+    - path: ~/downloads
+      mountPoint: /downloads
+      mode: rw
+
   # Maximum execution time per command (ms)
   timeout: 30000
-  
-  # Rate limiting to prevent abuse
-  rate_limit:
-    max_per_minute: 10
-    max_per_hour: 100
+
+  # Enable Python support via Pyodide
+  enable_python: false
+
+  # Enable network access
+  enable_network: false
+
+  # Execution limits for safety
+  execution_limits:
+    max_call_depth: 100
+    max_command_count: 10000
+    max_loop_iterations: 10000
 
 # -------------------------------------------
 # Approval Settings
@@ -163,10 +145,10 @@ shell:
 approval:
   # Automatically approve read-only operations
   auto_approve_readonly: true
-  
+
   # Require explicit approval for write/delete operations
   require_approval_write: true
-  
+
   # Seconds to wait for approval before canceling
   approval_timeout: 300
 
@@ -177,7 +159,7 @@ approval:
 scheduler:
   # How often to check for pending tasks (ms)
   check_interval: 1000
-  
+
   # Maximum tasks running simultaneously
   max_concurrent: 5
 
@@ -187,7 +169,7 @@ scheduler:
 logging:
   # Log verbosity: debug, info, warn, error
   level: ${LOG_LEVEL:-info}
-  
+
   # Enable audit logging for sensitive operations
   audit_enabled: true
 
@@ -205,13 +187,13 @@ database:
 subsonic:
   # Server URL (e.g., http://your-server:4533)
   server_url: ${SUBSONIC_SERVER_URL:-}
-  
+
   # Username for Subsonic
   username: ${SUBSONIC_USERNAME:-}
-  
+
   # Password for Subsonic
   password: ${SUBSONIC_PASSWORD:-}
-  
+
   # Prefix for playlists created by Aria
   default_playlist_prefix: "${SUBSONIC_DEFAULT_PLAYLIST_PREFIX:-Aria: }"
 
@@ -222,12 +204,12 @@ subsonic:
 lastfm:
   # API key from https://www.last.fm/api/account/create
   api_key: ${LASTFM_API_KEY:-}
-  
+
   # Your Last.fm username (optional, enables personalized recommendations)
   username: ${LASTFM_USERNAME:-}
-  
+
   # Days to cache tag data (reduces API calls)
   cache_expiry_days: 7
-  
+
   # Max API calls per second (Last.fm limit is 5)
   rate_limit_per_second: 4

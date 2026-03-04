@@ -5,13 +5,17 @@ A personal assistant built with TypeScript and Deno, communicating via Telegram,
 ## Features
 
 - 🤖 Telegram bot interface
-- 🧠 LLM integration via OpenRouter
+- 🧠 LLM integration via OpenRouter (multi-model support)
 - 📝 **Memory System** - Persistent storage for facts, preferences, and context
 - 💜 **Soul Document** - Defines Aria's playful, helpful, flirty personality
+- 🖥️ **Sandboxed Shell** - Execute bash commands safely with just-bash
 - 🔧 Extensible via MCP servers and internal skills
-- 📅 Task scheduling and notifications
-- 🖥️ Secure shell access with smart approval workflows
-- 💾 SQLite persistence
+- 📅 Task scheduling and notifications (cron support)
+- 🎙️ Voice support via ElevenLabs (transcription & TTS)
+- 🔍 Web search via Brave Search API
+- 📅 Calendar integration (CalDAV & Google Calendar)
+- 🎵 Music library integration (Subsonic + Last.fm)
+- 💾 SQLite persistence with FTS5 search
 
 ## Personality
 
@@ -23,6 +27,27 @@ Aria has a defined personality through her [soul.md](soul.md) document. She's:
 
 She remembers your preferences, anticipates your needs, and builds a unique relationship with you over time.
 
+## Sandboxed Shell
+
+Aria can execute bash commands in a secure sandboxed environment using [just-bash](https://github.com/vercel-labs/just-bash):
+
+- **Mountable filesystems** - Configure read-only or read-write access to host directories
+- **Built-in commands** - `ls`, `cat`, `grep`, `jq`, `sed`, `find`, and more
+- **Optional Python** - Enable Pyodide for Python script execution
+- **Optional network** - Controlled network access for `curl` commands
+- **Execution limits** - Protection against infinite loops and runaway scripts
+
+```yaml
+shell:
+  mounts:
+    - path: ~/projects
+      mountPoint: /workspace
+      mode: rw  # read-write
+    - path: ~/documents
+      mountPoint: /docs
+      mode: ro  # read-only
+```
+
 ## Memory System
 
 Aria can remember things about you and retrieve them later:
@@ -32,21 +57,17 @@ import { getMemoryRepository } from "./src/storage/mod.ts";
 
 const memory = getMemoryRepository();
 
-// Store a memory
 memory.create({
   content: "User prefers dark mode in all applications",
   category: "preference",
-  importance: 7
+  importance: 7,
 });
 
-// Search memories
 const results = memory.search({ query: "dark mode" });
-
-// Get important memories
-const important = memory.getImportant(5);
 ```
 
 ### Memory Categories
+
 - `preference` - User preferences and settings
 - `fact` - Important facts about the user
 - `conversation` - Notable conversation highlights
@@ -58,11 +79,12 @@ const important = memory.getImportant(5);
 ## Quick Start
 
 1. Copy `.env.example` to `.env` and fill in your credentials:
+
    ```bash
    cp .env.example .env
    ```
 
-2. Install dependencies and run:
+2. Run:
    ```bash
    deno task start
    ```
@@ -70,25 +92,28 @@ const important = memory.getImportant(5);
 ## Development
 
 ```bash
-# Run in development mode with auto-reload
-deno task dev
-
-# Run tests
-deno task test
-
-# Type check
-deno task check
-
-# Format code
-deno task fmt
-
-# Lint
-deno task lint
+deno task dev          # Run with auto-reload
+deno task test         # Run tests
+deno task test:unit    # Run unit tests only
+deno task check        # Type check
+deno task fmt          # Format code
+deno task lint         # Lint
 ```
 
 ## Configuration
 
-Configuration is loaded from `config.yaml` with environment variable substitution. See `config.yaml` for available options.
+Configuration is loaded from `config.yaml` with environment variable substitution. See `config.yaml` for all available options.
+
+### Key Configuration Areas
+
+- **Telegram** - Bot token and user restrictions
+- **OpenRouter** - LLM API key and model selection
+- **ElevenLabs** - Voice transcription and TTS
+- **Brave Search** - Web search capability
+- **Calendar** - CalDAV and/or Google Calendar integration
+- **Shell** - Sandboxed command execution with mounts
+- **Subsonic** - Music library for playlist management
+- **Last.fm** - Mood-based music recommendations
 
 ## Project Structure
 
@@ -96,19 +121,20 @@ Configuration is loaded from `config.yaml` with environment variable substitutio
 aria/
 ├── soul.md            # Aria's personality and values
 ├── src/
+│   ├── agent/         # Core agent logic and tool registry
 │   ├── bot/           # Telegram bot handlers and middleware
-│   ├── config/        # Configuration loading and types
+│   ├── brave/         # Brave Search integration
+│   ├── calendar/      # CalDAV and Google Calendar
+│   ├── config/        # Configuration loading and validation
+│   ├── elevenlabs/    # Voice transcription and TTS
+│   ├── lastfm/        # Last.fm integration for music
+│   ├── scheduler/     # Task scheduling (cron support)
+│   ├── shell/         # Sandboxed bash execution (just-bash)
+│   ├── skills/        # Dynamic skill generation and execution
+│   ├── soul/          # Soul document loader
 │   ├── storage/       # SQLite database + Memory system
-│   │   └── memory/    # Memory repository with FTS search
-│   ├── soul/          # Soul document loader and parser
-│   ├── agent/         # Core agent logic (planned)
-│   ├── llm/           # OpenRouter integration (planned)
-│   ├── mcp/           # MCP client (planned)
-│   ├── skills/        # Skill system (planned)
-│   ├── scheduler/     # Task scheduling (planned)
-│   └── shell/         # Secure shell execution (planned)
+│   └── subsonic/      # Subsonic music server integration
 ├── tests/             # Test files
-├── docs/              # Documentation
 └── config.yaml        # Configuration file
 ```
 
@@ -117,6 +143,7 @@ aria/
 The `soul.md` file defines who Aria is - her values, communication style, and relationship with users. It's loaded at startup and shapes how she interacts.
 
 Key sections:
+
 - **Who I Am** - Core identity
 - **How I Show Up** - Personality traits (playful, helpful, flirty)
 - **What I Value** - Your time, trust, autonomy, and relationship

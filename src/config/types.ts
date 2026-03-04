@@ -1,17 +1,23 @@
 import { z } from "zod";
 
-export const ShellRateLimitSchema = z.object({
-  maxPerMinute: z.number().default(10),
-  maxPerHour: z.number().default(100),
+export const MountConfigSchema = z.object({
+  path: z.string(),
+  mountPoint: z.string(),
+  mode: z.enum(["rw", "ro"]).default("ro"),
+});
+
+export const ExecutionLimitsSchema = z.object({
+  maxCallDepth: z.number().default(100),
+  maxCommandCount: z.number().default(10000),
+  maxLoopIterations: z.number().default(10000),
 });
 
 export const ShellConfigSchema = z.object({
-  allowedDirectories: z.array(z.string()).default([]),
-  deniedDirectories: z.array(z.string()).default([]),
-  allowedCommands: z.array(z.string()).default([]),
-  deniedCommands: z.array(z.string()).default([]),
+  mounts: z.array(MountConfigSchema).default([]),
   timeout: z.number().default(30000),
-  rateLimit: ShellRateLimitSchema.optional(),
+  enablePython: z.boolean().default(false),
+  enableNetwork: z.boolean().default(false),
+  executionLimits: ExecutionLimitsSchema.optional(),
 });
 
 export const TelegramConfigSchema = z.object({
@@ -109,6 +115,8 @@ export const ConfigSchema = z.object({
 
 export type Config = z.infer<typeof ConfigSchema>;
 export type ShellConfig = z.infer<typeof ShellConfigSchema>;
+export type MountConfig = z.infer<typeof MountConfigSchema>;
+export type ExecutionLimits = z.infer<typeof ExecutionLimitsSchema>;
 export type TelegramConfig = z.infer<typeof TelegramConfigSchema>;
 export type OpenRouterConfig = z.infer<typeof OpenRouterConfigSchema>;
 export type ElevenLabsConfig = z.infer<typeof ElevenLabsConfigSchema>;

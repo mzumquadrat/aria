@@ -1,6 +1,6 @@
 {
   "name": "@mzumquadrat/aria",
-  "version": "0.3.5",
+  "version": "0.4.0",
   "exports": "./src/main.ts",
   "tasks": {
     "start": "deno run --allow-net --allow-env --allow-read --allow-write --allow-run --allow-sys --allow-ffi --allow-import src/main.ts",
@@ -31,6 +31,7 @@
     "@tijs/deno-calendar": "jsr:@tijs/deno-calendar@^1.3.0",
     "grammy": "https://deno.land/x/grammy@v1.32.0/mod.ts",
     "grammy_types": "https://deno.land/x/grammy_types@v3.14.0/mod.ts",
+    "just-bash": "npm:just-bash@^2.11.7",
     "openrouter": "npm:@openrouter/sdk@^0.8.0",
     "zod": "npm:zod@^4.3.6"
   },
