@@ -125,7 +125,7 @@ export class PageOperations {
       screenshot = await page.screenshot();
     }
 
-    const base64 = btoa(String.fromCharCode(...screenshot));
+    const base64 = btoa(new TextDecoder("latin1").decode(screenshot));
 
     return {
       data: base64,
@@ -248,7 +248,7 @@ export class PageOperations {
 
     const pdfData = await page.pdf();
 
-    const base64 = btoa(String.fromCharCode(...pdfData));
+    const base64 = btoa(new TextDecoder("latin1").decode(pdfData));
 
     return { data: base64 };
   }
