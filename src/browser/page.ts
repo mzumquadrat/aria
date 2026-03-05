@@ -1,4 +1,5 @@
 import type { Page } from "@astral/astral";
+import { encodeBase64 } from "@std/encoding/base64";
 import type { BrowserSession } from "./session.ts";
 import type {
   ClickInput,
@@ -125,7 +126,7 @@ export class PageOperations {
       screenshot = await page.screenshot();
     }
 
-    const base64 = btoa(new TextDecoder("latin1").decode(screenshot));
+    const base64 = encodeBase64(screenshot);
 
     return {
       data: base64,
@@ -248,7 +249,7 @@ export class PageOperations {
 
     const pdfData = await page.pdf();
 
-    const base64 = btoa(new TextDecoder("latin1").decode(pdfData));
+    const base64 = encodeBase64(pdfData);
 
     return { data: base64 };
   }
