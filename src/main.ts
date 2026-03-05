@@ -1,5 +1,10 @@
-import { loadConfig, validateConfig, type Config } from "./config/mod.ts";
-import { closeDatabase, initializeDatabase, initializeAsyncDatabase, getDatabase } from "./storage/mod.ts";
+import { type Config, loadConfig, validateConfig } from "./config/mod.ts";
+import {
+  closeDatabase,
+  getDatabase,
+  initializeAsyncDatabase,
+  initializeDatabase,
+} from "./storage/mod.ts";
 import { createBot, setupBot, startBot, stopBot } from "./bot/mod.ts";
 import { createElevenLabsService } from "./elevenlabs/mod.ts";
 import { createBraveSearchService } from "./brave/mod.ts";
@@ -10,7 +15,7 @@ import { getMemoryRepository } from "./storage/memory/mod.ts";
 import { getScheduler, initializeScheduler } from "./scheduler/mod.ts";
 import { initializeMessaging } from "./bot/messaging.ts";
 import { createShellEnvironment } from "./shell/mod.ts";
-import { initializeMessageQueue, getMessageQueue, waitForQueueCompletion } from "./queue/mod.ts";
+import { getMessageQueue, initializeMessageQueue, waitForQueueCompletion } from "./queue/mod.ts";
 import { createBrowserService } from "./browser/mod.ts";
 import { createVisionService } from "./vision/mod.ts";
 import { createPhotoService } from "./photo/mod.ts";
@@ -66,9 +71,12 @@ async function main(): Promise<void> {
       const browserService = createBrowserService(config.browser);
       await browserService.connect();
       toolRegistry.setBrowserService(browserService);
-      console.log(`Browser service connected to ${config.browser.cdpEndpoint}`);
+      console.log("Browser service connected");
     } catch (error) {
-      console.error("Failed to connect browser service:", error instanceof Error ? error.message : error);
+      console.error(
+        "Failed to connect browser service:",
+        error instanceof Error ? error.message : error,
+      );
       console.log("Browser service disabled due to connection failure");
     }
   } else {

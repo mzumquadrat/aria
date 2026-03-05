@@ -5,6 +5,7 @@ This document provides essential information for AI coding agents working in the
 ## Project Overview
 
 Aria is a personal assistant built with TypeScript and Deno. It features:
+
 - Telegram bot interface via grammY
 - LLM integration via OpenRouter (multi-model support)
 - SQLite persistence with memory system and FTS5 search
@@ -14,6 +15,7 @@ Aria is a personal assistant built with TypeScript and Deno. It features:
 ## Build, Lint, and Test Commands
 
 ### Development
+
 ```bash
 deno task dev          # Run with watch mode
 deno task start        # Run in production mode
@@ -22,12 +24,14 @@ just dev               # Alternative: run with watch mode
 ```
 
 ### Building
+
 ```bash
 just build             # Compile to binary (x86_64-unknown-linux-gnu)
 just dist              # Build + package as tarball with config files
 ```
 
 ### Linting and Formatting
+
 ```bash
 deno task lint         # Run deno lint
 deno task fmt          # Format code
@@ -38,6 +42,7 @@ deno task check        # Type check only
 ### Testing
 
 **Run all tests:**
+
 ```bash
 deno task test         # Run all tests
 deno task test:unit    # Run unit tests only
@@ -45,16 +50,19 @@ deno task test:coverage # Run with coverage report
 ```
 
 **Run a single test file:**
+
 ```bash
 deno test --allow-net --allow-env --allow-read --allow-write --allow-run --allow-sys --allow-ffi --allow-import tests/unit/markdown_test.ts
 ```
 
 **Run a single test by name (using filter):**
+
 ```bash
 deno test --allow-net --allow-env --allow-read --allow-write --allow-run --allow-sys --allow-ffi --allow-import --filter "escapeMarkdownV2 - escapes special characters" tests/
 ```
 
 **Test locations:**
+
 - Unit tests: `tests/unit/`
 - Integration tests: `tests/integration/` (configured, may be empty)
 - E2E tests: `tests/e2e/` (configured, may be empty)
@@ -64,17 +72,20 @@ deno test --allow-net --allow-env --allow-read --allow-write --allow-run --allow
 ### Import Conventions
 
 **Use relative imports with `.ts` extension:**
+
 ```typescript
 import { loadConfig } from "./config/mod.ts";
 import type { Config } from "./config/mod.ts";
 ```
 
 **Import order:**
+
 1. External dependencies (Deno modules, npm packages)
 2. Internal modules (relative paths)
 3. Type imports using `import type`
 
 **Module structure:**
+
 - Each module has a `mod.ts` barrel file that re-exports public APIs
 - Types go in `types.ts` files
 - Repository pattern: `repository.ts` for data access
@@ -82,10 +93,12 @@ import type { Config } from "./config/mod.ts";
 ### TypeScript Types
 
 **Interfaces vs Types:**
+
 - Use `interface` for object shapes and data structures
 - Use `type` for unions, aliases, and complex types
 
 **Runtime validation with Zod:**
+
 ```typescript
 export const ShellConfigSchema = z.object({
   allowedDirectories: z.array(z.string()).default([]),
@@ -94,25 +107,27 @@ export type ShellConfig = z.infer<typeof ShellConfigSchema>;
 ```
 
 **Always use explicit return types:**
+
 ```typescript
-export async function handleMessage(ctx: Context): Promise<void>
-export function createSkill(skill: SkillDefinition): SkillRecord
+export async function handleMessage(ctx: Context): Promise<void>;
+export function createSkill(skill: SkillDefinition): SkillRecord;
 ```
 
 ### Naming Conventions
 
-| Element | Convention | Example |
-|---------|------------|---------|
-| Variables/Functions | `camelCase` | `toolRegistry`, `getSkillByName` |
-| Classes | `PascalCase` | `ToolRegistry`, `MemoryRepository` |
-| Interfaces | `PascalCase` | `SkillRecord`, `ToolResult` |
-| Constants | `SCREAMING_SNAKE_CASE` | `BUILTIN_TOOLS`, `SYSTEM_PROMPT` |
-| Files | `camelCase.ts` or `kebab-case.ts` | `executor.ts`, `message.ts` |
-| Test files | `<module>_test.ts` | `memory_test.ts` |
+| Element             | Convention                        | Example                            |
+| ------------------- | --------------------------------- | ---------------------------------- |
+| Variables/Functions | `camelCase`                       | `toolRegistry`, `getSkillByName`   |
+| Classes             | `PascalCase`                      | `ToolRegistry`, `MemoryRepository` |
+| Interfaces          | `PascalCase`                      | `SkillRecord`, `ToolResult`        |
+| Constants           | `SCREAMING_SNAKE_CASE`            | `BUILTIN_TOOLS`, `SYSTEM_PROMPT`   |
+| Files               | `camelCase.ts` or `kebab-case.ts` | `executor.ts`, `message.ts`        |
+| Test files          | `<module>_test.ts`                | `memory_test.ts`                   |
 
 ### Error Handling
 
 **Return result objects with success/error flags:**
+
 ```typescript
 export interface ToolResult {
   tool: string;
@@ -123,19 +138,21 @@ export interface ToolResult {
 ```
 
 **Use try-catch with proper error typing:**
+
 ```typescript
 try {
   const result = await this.service.execute(input);
   return { success: true, output: result };
 } catch (error) {
-  return { 
-    success: false, 
-    error: error instanceof Error ? error.message : "Operation failed" 
+  return {
+    success: false,
+    error: error instanceof Error ? error.message : "Operation failed",
   };
 }
 ```
 
 **Early returns for guard clauses:**
+
 ```typescript
 if (!this.service) {
   return { success: false, error: "Service not configured" };
@@ -145,6 +162,7 @@ if (!this.service) {
 ### Async Patterns
 
 **Always use async/await (no raw Promise chains):**
+
 ```typescript
 async function processMessage(message: string): Promise<string> {
   const config = await loadConfig();
@@ -164,6 +182,7 @@ async function processMessage(message: string): Promise<string> {
 - Classes for stateful services only
 - Private methods for implementation details
 - Singleton pattern via module-level state:
+
 ```typescript
 let instance: Service | null = null;
 
@@ -185,6 +204,7 @@ export function getService(): Service {
 ## Testing Patterns
 
 **Test structure:**
+
 ```typescript
 Deno.test("ModuleName - specific behavior", async () => {
   await setupTest();
@@ -194,6 +214,7 @@ Deno.test("ModuleName - specific behavior", async () => {
 ```
 
 **Assertions (use `@std/assert`):**
+
 ```typescript
 import { assertEquals } from "@std/assert";
 

@@ -1,4 +1,4 @@
-export type MemoryCategory = 
+export type MemoryCategory =
   | "preference"
   | "fact"
   | "conversation"

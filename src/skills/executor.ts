@@ -8,7 +8,7 @@ export interface ExecutionContext {
 
 export async function executeSkill(
   skill: SkillDefinition,
-  context: ExecutionContext
+  context: ExecutionContext,
 ): Promise<SkillExecutionResult> {
   const startTime = Date.now();
   const timeout = context.timeout ?? 30000;
@@ -113,7 +113,8 @@ if (typeof execute === 'function') {
 }
 
 export function validateSkillCode(code: string): { valid: boolean; error?: string } {
-  const hasExecute = /\bfunction\s+execute\s*\(|const\s+execute\s*=|export\s+async\s+function\s+execute/;
+  const hasExecute =
+    /\bfunction\s+execute\s*\(|const\s+execute\s*=|export\s+async\s+function\s+execute/;
   const hasRun = /\bfunction\s+run\s*\(|const\s+run\s*=|export\s+async\s+function\s+run/;
   const hasMain = /\bfunction\s+main\s*\(|const\s+main\s*=|export\s+async\s+function\s+main/;
 

@@ -1,6 +1,6 @@
 import type { Bot } from "grammy";
 import type { Config, QueueConfig } from "../config/mod.ts";
-import { TaskQueue, type QueuedTask, type TaskContext } from "../queue/mod.ts";
+import { type QueuedTask, type TaskContext, TaskQueue } from "../queue/mod.ts";
 import { getAgent } from "../agent/mod.ts";
 import { toolRegistry } from "../agent/tools.ts";
 
@@ -38,7 +38,9 @@ export function initializeMessageQueue(config: Config, bot: Bot): TaskQueue<Mess
 
   queueInstance.start();
 
-  console.log(`[MESSAGE QUEUE] Initialized (maxConcurrent: ${queueConfig.maxConcurrent}, timeout: ${queueConfig.defaultTimeout}ms, shutdownTimeout: ${shutdownTimeout}ms)`);
+  console.log(
+    `[MESSAGE QUEUE] Initialized (maxConcurrent: ${queueConfig.maxConcurrent}, timeout: ${queueConfig.defaultTimeout}ms, shutdownTimeout: ${shutdownTimeout}ms)`,
+  );
 
   return queueInstance;
 }
@@ -84,7 +86,7 @@ function createMessageHandler() {
 export function enqueueMessage(
   text: string,
   context: TaskContext,
-  priority: "high" | "normal" | "low" = "normal"
+  priority: "high" | "normal" | "low" = "normal",
 ): QueuedTask<MessagePayload> {
   const queue = getMessageQueue();
   return queue.enqueue("message", { text }, context, priority);
@@ -112,7 +114,9 @@ export async function waitForQueueCompletion(timeoutMs?: number): Promise<void> 
     return;
   }
 
-  console.log(`[MESSAGE QUEUE] Waiting for ${stats.running} running task(s) to complete (timeout: ${timeout}ms)`);
+  console.log(
+    `[MESSAGE QUEUE] Waiting for ${stats.running} running task(s) to complete (timeout: ${timeout}ms)`,
+  );
 
   await new Promise<void>((resolve) => {
     const checkInterval = setInterval(() => {
@@ -122,7 +126,9 @@ export async function waitForQueueCompletion(timeoutMs?: number): Promise<void> 
       if (!currentStats || currentStats.running === 0 || elapsed >= timeout) {
         clearInterval(checkInterval);
         if (currentStats && currentStats.running > 0) {
-          console.log(`[MESSAGE QUEUE] Shutdown timeout reached, ${currentStats.running} task(s) still running`);
+          console.log(
+            `[MESSAGE QUEUE] Shutdown timeout reached, ${currentStats.running} task(s) still running`,
+          );
         } else {
           console.log(`[MESSAGE QUEUE] All tasks completed`);
         }

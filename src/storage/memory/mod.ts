@@ -1,10 +1,10 @@
-export { MemoryRepository, getMemoryRepository } from "./repository.ts";
+export { getMemoryRepository, MemoryRepository } from "./repository.ts";
 export { AsyncMemoryRepository, getAsyncMemoryRepository } from "./async_repository.ts";
 export type {
+  CreateMemoryInput,
   Memory,
   MemoryCategory,
-  CreateMemoryInput,
-  UpdateMemoryInput,
-  MemorySearchResult,
   MemorySearchOptions,
+  MemorySearchResult,
+  UpdateMemoryInput,
 } from "./types.ts";

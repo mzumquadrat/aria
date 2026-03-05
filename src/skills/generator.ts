@@ -1,4 +1,4 @@
-import type { SkillDefinition, ImportResult } from "./types.ts";
+import type { ImportResult, SkillDefinition } from "./types.ts";
 import { SkillSchema } from "./types.ts";
 
 const SYSTEM_PROMPT = `You are a skill code generator for a personal assistant bot named Aria.
@@ -32,7 +32,7 @@ export interface GenerateSkillOptions {
 }
 
 export async function generateSkillFromPrompt(
-  options: GenerateSkillOptions
+  options: GenerateSkillOptions,
 ): Promise<ImportResult> {
   // Default model is only used as fallback; handler should pass config.openrouter.defaultModel
   const { prompt, apiKey, model = "deepseek/deepseek-chat" } = options;
@@ -91,6 +91,11 @@ export async function generateSkillFromPrompt(
 
     return { success: true, skill: validated.data };
   } catch (error) {
-    return { success: false, error: `Failed to generate skill: ${error instanceof Error ? error.message : "Unknown error"}` };
+    return {
+      success: false,
+      error: `Failed to generate skill: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`,
+    };
   }
 }

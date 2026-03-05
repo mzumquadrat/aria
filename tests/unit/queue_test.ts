@@ -267,7 +267,7 @@ Deno.test("TaskQueue - task has correct timestamps", async () => {
   assertEquals(completed.completedAt instanceof Date, true);
   assertEquals(
     completed.completedAt!.getTime() >= completed.startedAt!.getTime(),
-    true
+    true,
   );
 });
 

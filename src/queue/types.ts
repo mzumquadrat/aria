@@ -37,7 +37,7 @@ export interface QueueStats {
 }
 
 export type TaskHandler<T = unknown, R = unknown> = (
-  task: QueuedTask<T>
+  task: QueuedTask<T>,
 ) => Promise<R>;
 
 const PRIORITY_VALUES: Record<TaskPriority, number> = {

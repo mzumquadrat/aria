@@ -107,7 +107,10 @@ export function parseSkillMarkdown(content: string): ImportResult {
 
     return { success: true, skill: parsed.data };
   } catch (error) {
-    return { success: false, error: `Failed to parse skill: ${error instanceof Error ? error.message : "Unknown error"}` };
+    return {
+      success: false,
+      error: `Failed to parse skill: ${error instanceof Error ? error.message : "Unknown error"}`,
+    };
   }
 }
 
@@ -116,7 +119,9 @@ export function skillToMarkdown(skill: SkillDefinition): string {
   markdown += `## Description\n\n${skill.description}\n\n`;
 
   if (skill.inputSchema || skill.outputSchema) {
-    markdown += `## Schema\n\n\`\`\`json\n${JSON.stringify({ input: skill.inputSchema, output: skill.outputSchema }, null, 2)}\n\`\`\`\n\n`;
+    markdown += `## Schema\n\n\`\`\`json\n${
+      JSON.stringify({ input: skill.inputSchema, output: skill.outputSchema }, null, 2)
+    }\n\`\`\`\n\n`;
   }
 
   markdown += `## Code\n\n\`\`\`typescript\n${skill.code}\n\`\`\`\n\n`;

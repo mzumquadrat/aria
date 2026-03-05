@@ -94,14 +94,14 @@ Deno.test("escapeMarkdownV2 - handles complex message", () => {
 • *Ort:* Coffee Bay, Marktplatz 9, 35390 Gießen
 
 2 Stunden sollten auf jeden Fall reichen! ☕😊`;
-  
+
   const result = escapeMarkdownV2(input);
-  
+
   // Check that special characters are escaped
   assertEquals(result.includes("\\!"), true);
   assertEquals(result.includes("\\-"), true);
   assertEquals(result.includes("\\:"), false); // : is not a special char
-  
+
   // Check that formatting is preserved (bold uses *text* in MarkdownV2)
   assertEquals(result.includes("*Neuer Plan:*"), true);
   assertEquals(result.includes("*Zeit:*"), true);

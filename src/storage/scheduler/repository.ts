@@ -1,12 +1,12 @@
 import { getDatabase } from "../sqlite.ts";
 import { generateUUIDv4 } from "../uuid.ts";
 import type {
-  ScheduledTask,
   CreateTaskInput,
-  TaskQueryOptions,
-  TaskType,
-  TaskStatus,
+  ScheduledTask,
   TaskPayload,
+  TaskQueryOptions,
+  TaskStatus,
+  TaskType,
 } from "./types.ts";
 
 interface TaskRow {
@@ -55,7 +55,7 @@ export class TaskRepository {
       payload,
       scheduledFor,
       recurrence,
-      now
+      now,
     );
 
     return {
@@ -73,37 +73,37 @@ export class TaskRepository {
     const db = getDatabase();
     const row = db.queryOne<TaskRow>(
       "SELECT * FROM scheduled_tasks WHERE id = ?",
-      id
+      id,
     );
     return row ? rowToTask(row) : null;
   }
 
   updateStatus(id: string, status: TaskStatus, error?: string): boolean {
     const db = getDatabase();
-    
+
     if (error) {
       const existing = this.getById(id);
       if (!existing) return false;
-      
+
       const payload = {
         ...existing.payload,
         _error: error,
       };
-      
+
       db.run(
         "UPDATE scheduled_tasks SET status = ?, payload = ? WHERE id = ?",
         status,
         JSON.stringify(payload),
-        id
+        id,
       );
     } else {
       db.run(
         "UPDATE scheduled_tasks SET status = ? WHERE id = ?",
         status,
-        id
+        id,
       );
     }
-    
+
     return true;
   }
 
@@ -111,7 +111,7 @@ export class TaskRepository {
     const db = getDatabase();
     const result = db.queryOne<{ count: number }>(
       "SELECT COUNT(*) as count FROM scheduled_tasks WHERE id = ?",
-      id
+      id,
     );
 
     if (!result || result.count === 0) return false;
@@ -127,7 +127,7 @@ export class TaskRepository {
        WHERE status = 'pending' 
        AND scheduled_for <= ? 
        ORDER BY scheduled_for ASC`,
-      now.toISOString()
+      now.toISOString(),
     );
     return rows.map(rowToTask);
   }
@@ -187,7 +187,7 @@ export class TaskRepository {
   count(): number {
     const db = getDatabase();
     const result = db.queryOne<{ count: number }>(
-      "SELECT COUNT(*) as count FROM scheduled_tasks"
+      "SELECT COUNT(*) as count FROM scheduled_tasks",
     );
     return result?.count ?? 0;
   }
@@ -196,7 +196,7 @@ export class TaskRepository {
     const db = getDatabase();
     const result = db.queryOne<{ count: number }>(
       "SELECT COUNT(*) as count FROM scheduled_tasks WHERE status = ?",
-      status
+      status,
     );
     return result?.count ?? 0;
   }

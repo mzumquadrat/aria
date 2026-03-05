@@ -148,7 +148,11 @@ Deno.test("createToolExecutor - integrates with TaskQueue", async () => {
 
   const context = createTestContext();
 
-  const task = queue.enqueue("tool", { tool: "calculate", input: { expression: "5 * 5" } }, context);
+  const task = queue.enqueue(
+    "tool",
+    { tool: "calculate", input: { expression: "5 * 5" } },
+    context,
+  );
   queue.start();
 
   await delay(50);

@@ -1,3 +1,4 @@
+import type { Page } from "@astral/astral";
 import type { BrowserSession } from "./session.ts";
 import type {
   ClickInput,
@@ -5,344 +6,145 @@ import type {
   EvaluateInput,
   ExtractLinksInput,
   GetContentInput,
+  GetCookiesInput,
   LinkInfo,
   NavigateInput,
+  PdfInput,
   ScreenshotInput,
   ScreenshotResult,
   ScrollInput,
   SelectInput,
+  SetCookiesInput,
   TypeInput,
   WaitForInput,
 } from "./types.ts";
 
-interface NodeInfo {
-  nodeId: number;
-  backendNodeId?: number;
-  nodeType: number;
-  nodeName: string;
-  localName: string;
-  nodeValue: string;
-  childNodeCount?: number;
-  children?: NodeInfo[];
-  attributes?: string[];
-  documentURL?: string;
-  baseURL?: string;
-}
-
-interface BoxModel {
-  content: number[];
-  padding: number[];
-  border: number[];
-  margin: number[];
-  width: number;
-  height: number;
-}
-
 export class PageOperations {
   constructor(private session: BrowserSession) {}
 
-  private getClient() {
-    return this.session.getClient();
-  }
-
-  private getSessionId(): string {
-    const sessionId = this.session.getSessionId();
-    if (!sessionId) {
-      throw new Error("No active session");
-    }
-    return sessionId;
+  private getPage(): Page {
+    return this.session.getActivePage();
   }
 
   async navigate(input: NavigateInput): Promise<{ url: string; title: string }> {
-    const sessionId = this.getSessionId();
-    const client = this.getClient();
+    const page = this.getPage();
 
     const waitUntil = input.waitUntil ?? "load";
+    const waitOptions: "load" | "networkidle0" | "networkidle2" = waitUntil === "networkidle"
+      ? "networkidle0"
+      : waitUntil === "domcontentloaded"
+      ? "load"
+      : waitUntil;
 
-    await client.send(
-      "Page.navigate",
-      { url: input.url, transitionType: "typed" },
-      sessionId,
-    );
+    await page.goto(input.url, { waitUntil: waitOptions });
 
-    await this.waitForLoadState(waitUntil, sessionId);
+    const url = page.url || input.url;
+    const title = await page.evaluate("document.title") as string;
 
-    const evalResult = await client.send<{ result?: { value?: unknown } }>(
-      "Runtime.evaluate",
-      { expression: "document.title + '|||' + window.location.href" },
-      sessionId,
-    );
-
-    const valueStr = String(evalResult.result?.value ?? "");
-    const sepIndex = valueStr.indexOf("|||");
-    const title = sepIndex >= 0 ? valueStr.substring(0, sepIndex) : "";
-    const url = sepIndex >= 0 ? valueStr.substring(sepIndex + 3) : input.url;
-
-    return { url: url || input.url, title: title || "" };
-  }
-
-  private async waitForLoadState(state: string, sessionId: string): Promise<void> {
-    const client = this.getClient();
-    const timeout = this.session.getConfig().defaultTimeout;
-
-    if (state === "domcontentloaded") {
-      await client.send(
-        "Runtime.evaluate",
-        { expression: "new Promise(r => document.readyState !== 'loading' ? r() : document.addEventListener('DOMContentLoaded', r))" },
-        sessionId,
-        timeout,
-      );
-    } else if (state === "networkidle") {
-      await new Promise<void>((resolve) => {
-        let inFlight = 0;
-        let idleTimer: number | undefined;
-
-        const checkIdle = (): void => {
-          if (idleTimer !== undefined) {
-            clearTimeout(idleTimer);
-          }
-          idleTimer = setTimeout(() => {
-            cleanup();
-            resolve();
-          }, 500);
-        };
-
-        const cleanup = client.on("Network.requestWillBeSent", () => {
-          inFlight++;
-          if (idleTimer !== undefined) {
-            clearTimeout(idleTimer);
-          }
-        });
-
-        client.on("Network.responseReceived", () => {
-          inFlight--;
-          if (inFlight <= 0) {
-            checkIdle();
-          }
-        });
-
-        client.on("Network.loadingFailed", () => {
-          inFlight--;
-          if (inFlight <= 0) {
-            checkIdle();
-          }
-        });
-
-        checkIdle();
-
-        setTimeout(() => {
-          cleanup();
-          resolve();
-        }, timeout);
-      });
-    } else {
-      await client.send(
-        "Runtime.evaluate",
-        { expression: "new Promise(r => document.readyState === 'complete' ? r() : window.addEventListener('load', r))" },
-        sessionId,
-        timeout,
-      );
-    }
+    return { url, title };
   }
 
   async click(input: ClickInput): Promise<{ clicked: boolean; selector: string }> {
-    const sessionId = this.getSessionId();
-    const client = this.getClient();
+    const page = this.getPage();
 
-    const button = input.button ?? "left";
-    const clickCount = input.clickCount ?? 1;
-
-    const node = await this.querySelector(input.selector, sessionId);
-    if (!node) {
+    const element = await page.$(input.selector);
+    if (!element) {
       throw new Error(`Element not found: ${input.selector}`);
     }
 
-    const box = await this.getElementBoxModel(node.nodeId, sessionId);
-    if (!box) {
-      throw new Error(`Element not visible: ${input.selector}`);
-    }
-
-    const x = box.content[0] + (box.width / 2);
-    const y = box.content[1] + (box.height / 2);
-
-    await client.send(
-      "Input.dispatchMouseEvent",
-      { type: "mousePressed", x, y, button, clickCount },
-      sessionId,
-    );
-
-    await client.send(
-      "Input.dispatchMouseEvent",
-      { type: "mouseReleased", x, y, button, clickCount },
-      sessionId,
-    );
+    await element.click();
 
     return { clicked: true, selector: input.selector };
   }
 
   async type(input: TypeInput): Promise<{ typed: boolean; selector: string }> {
-    const sessionId = this.getSessionId();
-    const client = this.getClient();
+    const page = this.getPage();
 
-    const node = await this.querySelector(input.selector, sessionId);
-    if (!node) {
+    const element = await page.$(input.selector);
+    if (!element) {
       throw new Error(`Element not found: ${input.selector}`);
     }
 
-    await client.send(
-      "DOM.focus",
-      { nodeId: node.nodeId },
-      sessionId,
-    );
+    await element.focus();
 
     if (input.clear) {
-      await client.send(
-        "Runtime.evaluate",
-        { expression: `document.querySelector('${this.escapeSelector(input.selector)}').value = ''` },
-        sessionId,
-      );
+      const escapedSelector = input.selector.replace(/'/g, "\\'");
+      await page.evaluate(`document.querySelector('${escapedSelector}').value = ''`);
     }
 
     const delay = input.delay ?? 10;
-
-    for (const char of input.text) {
-      await client.send(
-        "Input.dispatchKeyEvent",
-        { type: "keyDown", text: char },
-        sessionId,
-      );
-
-      await new Promise((r) => setTimeout(r, delay));
-
-      await client.send(
-        "Input.dispatchKeyEvent",
-        { type: "keyUp", text: char },
-        sessionId,
-      );
-    }
+    await element.type(input.text, { delay });
 
     return { typed: true, selector: input.selector };
   }
 
-  async select(input: SelectInput): Promise<{ selected: boolean; selector: string; value: string }> {
-    const sessionId = this.getSessionId();
-    const client = this.getClient();
+  async select(
+    input: SelectInput,
+  ): Promise<{ selected: boolean; selector: string; value: string }> {
+    const page = this.getPage();
 
-    const escapedSelector = this.escapeSelector(input.selector);
-    const escapedValue = this.escapeValue(input.value);
+    const escapedSelector = input.selector.replace(/'/g, "\\'");
+    const escapedValue = input.value.replace(/'/g, "\\'");
 
-    await client.send(
-      "Runtime.evaluate",
-      {
-        expression: `
-          const select = document.querySelector('${escapedSelector}');
-          if (select) {
-            select.value = '${escapedValue}';
-            select.dispatchEvent(new Event('change', { bubbles: true }));
-            true;
-          } else {
-            false;
-          }
-        `,
-      },
-      sessionId,
-    );
+    await page.evaluate(`
+      (function() {
+        const select = document.querySelector('${escapedSelector}');
+        if (select) {
+          select.value = '${escapedValue}';
+          select.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      })()
+    `);
 
     return { selected: true, selector: input.selector, value: input.value };
   }
 
   async screenshot(input: ScreenshotInput = {}): Promise<ScreenshotResult> {
-    const sessionId = this.getSessionId();
-    const client = this.getClient();
+    const page = this.getPage();
 
-    let clip: { x: number; y: number; width: number; height: number; scale: number } | undefined;
-    let width = 0;
-    let height = 0;
+    let screenshot: Uint8Array;
+    let width = 1280;
+    let height = 720;
 
     if (input.selector) {
-      const node = await this.querySelector(input.selector, sessionId);
-      if (!node) {
+      const element = await page.$(input.selector);
+      if (!element) {
         throw new Error(`Element not found: ${input.selector}`);
       }
 
-      const box = await this.getElementBoxModel(node.nodeId, sessionId);
+      const box = await element.boundingBox();
       if (!box) {
         throw new Error(`Element not visible: ${input.selector}`);
       }
 
-      clip = {
-        x: box.content[0],
-        y: box.content[1],
-        width: box.width,
-        height: box.height,
-        scale: 1,
-      };
       width = box.width;
       height = box.height;
-    } else if (input.fullPage) {
-      const layout = await client.send<{ contentSize: { width: number; height: number } }>(
-        "Page.getLayoutMetrics",
-        {},
-        sessionId,
-      );
 
-      width = layout.contentSize.width;
-      height = layout.contentSize.height;
-      clip = {
-        x: 0,
-        y: 0,
-        width,
-        height,
-        scale: 1,
-      };
+      screenshot = await element.screenshot();
     } else {
-      const layout = await client.send<{ visualViewport: { clientWidth: number; clientHeight: number } }>(
-        "Page.getLayoutMetrics",
-        {},
-        sessionId,
-      );
-
-      width = layout.visualViewport.clientWidth;
-      height = layout.visualViewport.clientHeight;
+      screenshot = await page.screenshot();
     }
 
-    const quality = input.quality ?? this.session.getConfig().screenshotQuality;
-
-    const result = await client.send<{ data: string }>(
-      "Page.captureScreenshot",
-      {
-        format: "jpeg",
-        quality,
-        clip,
-      },
-      sessionId,
-    );
+    const base64 = btoa(String.fromCharCode(...screenshot));
 
     return {
-      data: result.data,
-      mimeType: "image/jpeg",
+      data: base64,
+      mimeType: "image/png",
       width,
       height,
     };
   }
 
   async getContent(input: GetContentInput = {}): Promise<ContentResult> {
-    const sessionId = this.getSessionId();
-    const client = this.getClient();
+    const page = this.getPage();
 
-    const escapedSelector = input.selector ? this.escapeSelector(input.selector) : null;
+    const escapedSelector = input.selector ? input.selector.replace(/'/g, "\\'") : null;
 
     const htmlExpr = escapedSelector
       ? `document.querySelector('${escapedSelector}')?.outerHTML || ''`
       : "document.documentElement.outerHTML";
 
-    const htmlResult = await client.send<{ result?: { value?: unknown } }>(
-      "Runtime.evaluate",
-      { expression: htmlExpr },
-      sessionId,
-    );
-
-    const html = String(htmlResult.result?.value ?? "");
+    const html = await page.evaluate(htmlExpr) as string;
 
     let text: string | undefined;
     if (input.includeText) {
@@ -350,13 +152,7 @@ export class PageOperations {
         ? `document.querySelector('${escapedSelector}')?.innerText || ''`
         : "document.body?.innerText || ''";
 
-      const textResult = await client.send<{ result?: { value?: unknown } }>(
-        "Runtime.evaluate",
-        { expression: textExpr },
-        sessionId,
-      );
-
-      text = String(textResult.result?.value ?? "");
+      text = await page.evaluate(textExpr) as string;
     }
 
     const result: ContentResult = { html };
@@ -367,143 +163,56 @@ export class PageOperations {
   }
 
   async extractText(): Promise<string> {
-    const sessionId = this.getSessionId();
-    const client = this.getClient();
+    const page = this.getPage();
 
-    const result = await client.send<{ result?: { value?: unknown } }>(
-      "Runtime.evaluate",
-      { expression: "document.body?.innerText || ''" },
-      sessionId,
-    );
-
-    return String(result.result?.value ?? "");
+    return await page.evaluate("document.body?.innerText || ''") as string;
   }
 
   async extractLinks(input: ExtractLinksInput = {}): Promise<LinkInfo[]> {
-    const sessionId = this.getSessionId();
-    const client = this.getClient();
+    const page = this.getPage();
 
-    const escapedSelector = input.selector ? this.escapeSelector(input.selector) : "a";
+    const escapedSelector = input.selector ? input.selector.replace(/'/g, "\\'") : "a";
 
-    const result = await client.send<{ result?: { value?: unknown } }>(
-      "Runtime.evaluate",
-      {
-        expression: `
-          JSON.stringify(
-            Array.from(document.querySelectorAll('${escapedSelector}')).map(a => ({
-              href: a.href,
-              text: a.innerText?.trim() || '',
-              title: a.title || null
-            }))
-          )
-        `,
-      },
-      sessionId,
-    );
+    const result = await page.evaluate(`
+      JSON.stringify(
+        Array.from(document.querySelectorAll('${escapedSelector}')).map(a => ({
+          href: a.href,
+          text: a.innerText?.trim() || '',
+          title: a.title || null
+        }))
+      )
+    `) as string;
 
     try {
-      return JSON.parse(String(result.result?.value ?? "[]")) as LinkInfo[];
+      return JSON.parse(result) as LinkInfo[];
     } catch {
       return [];
     }
   }
 
   async evaluate(input: EvaluateInput): Promise<unknown> {
-    const sessionId = this.getSessionId();
-    const client = this.getClient();
+    const page = this.getPage();
 
-    const result = await client.send<{ result?: { value?: unknown; type?: string; description?: string } }>(
-      "Runtime.evaluate",
-      { expression: input.expression, returnByValue: true },
-      sessionId,
-    );
-
-    if (result.result?.type === "object" && result.result.value === undefined) {
-      return { type: "object", description: result.result.description };
-    }
-
-    return result.result?.value;
+    return await page.evaluate(input.expression);
   }
 
   async waitFor(input: WaitForInput): Promise<{ success: boolean }> {
-    const sessionId = this.getSessionId();
-    const client = this.getClient();
-    const timeout = input.timeout ?? this.session.getConfig().defaultTimeout;
+    const page = this.getPage();
 
     if (input.script) {
-      await client.send(
-        "Runtime.evaluate",
-        {
-          expression: `new Promise((resolve, reject) => {
-            const timeout = setTimeout(() => reject(new Error('Timeout')), ${timeout});
-            const check = () => {
-              try {
-                if (${input.script}) {
-                  clearTimeout(timeout);
-                  resolve();
-                } else {
-                  requestAnimationFrame(check);
-                }
-              } catch (e) {
-                requestAnimationFrame(check);
-              }
-            };
-            check();
-          })`,
-        },
-        sessionId,
-        timeout + 1000,
-      );
+      await page.waitForFunction(input.script);
     } else if (input.selector) {
-      const condition = input.condition ?? "visible";
-      const escapedSelector = this.escapeSelector(input.selector);
-
-      let conditionExpr: string;
-      switch (condition) {
-        case "hidden":
-          conditionExpr = `!el || el.offsetParent === null`;
-          break;
-        case "attached":
-          conditionExpr = `!!el`;
-          break;
-        case "detached":
-          conditionExpr = `!el`;
-          break;
-        default:
-          conditionExpr = `el && el.offsetParent !== null`;
-      }
-
-      await client.send(
-        "Runtime.evaluate",
-        {
-          expression: `new Promise((resolve, reject) => {
-            const timeout = setTimeout(() => reject(new Error('Timeout waiting for ${input.selector}')), ${timeout});
-            const check = () => {
-              const el = document.querySelector('${escapedSelector}');
-              if (${conditionExpr}) {
-                clearTimeout(timeout);
-                resolve();
-              } else {
-                requestAnimationFrame(check);
-              }
-            };
-            check();
-          })`,
-        },
-        sessionId,
-        timeout + 1000,
-      );
+      await page.waitForSelector(input.selector);
     }
 
     return { success: true };
   }
 
   async scroll(input: ScrollInput): Promise<{ scrolled: boolean }> {
-    const sessionId = this.getSessionId();
-    const client = this.getClient();
+    const page = this.getPage();
 
     const amount = input.amount ?? 300;
-    const escapedSelector = input.selector ? this.escapeSelector(input.selector) : null;
+    const escapedSelector = input.selector ? input.selector.replace(/'/g, "\\'") : null;
 
     let scrollExpr: string;
     switch (input.direction) {
@@ -529,60 +238,45 @@ export class PageOperations {
         break;
     }
 
-    await client.send(
-      "Runtime.evaluate",
-      { expression: scrollExpr },
-      sessionId,
-    );
+    await page.evaluate(scrollExpr);
 
     return { scrolled: true };
   }
 
-  private async querySelector(selector: string, sessionId: string): Promise<NodeInfo | null> {
-    const client = this.getClient();
+  async pdf(_input: PdfInput = {}): Promise<{ data: string }> {
+    const page = this.getPage();
 
-    const doc = await client.send<{ root: NodeInfo }>("DOM.getDocument", {}, sessionId);
+    const pdfData = await page.pdf();
 
-    const escapedSelector = this.escapeSelector(selector);
+    const base64 = btoa(String.fromCharCode(...pdfData));
 
-    try {
-      const result = await client.send<{ nodeId: number }>(
-        "DOM.querySelector",
-        { nodeId: doc.root.nodeId, selector: escapedSelector },
-        sessionId,
-      );
-
-      if (result.nodeId === 0) {
-        return null;
-      }
-
-      return { nodeId: result.nodeId, nodeName: "", nodeType: 1, localName: "", nodeValue: "" };
-    } catch {
-      return null;
-    }
+    return { data: base64 };
   }
 
-  private async getElementBoxModel(nodeId: number, sessionId: string): Promise<BoxModel | null> {
-    const client = this.getClient();
+  async getCookies(_input: GetCookiesInput): Promise<{ cookies: unknown[] }> {
+    const page = this.getPage();
 
-    try {
-      const result = await client.send<{ model?: BoxModel }>(
-        "DOM.getBoxModel",
-        { nodeId },
-        sessionId,
-      );
+    const cookies = await page.cookies();
 
-      return result.model ?? null;
-    } catch {
-      return null;
-    }
+    return { cookies: cookies as unknown[] };
   }
 
-  private escapeSelector(selector: string): string {
-    return selector.replace(/'/g, "\\'").replace(/\\/g, "\\\\");
-  }
+  async setCookies(input: SetCookiesInput): Promise<{ success: boolean }> {
+    const page = this.getPage();
 
-  private escapeValue(value: string): string {
-    return value.replace(/'/g, "\\'").replace(/\\/g, "\\\\");
+    const cookies = input.cookies.map((c) => ({
+      name: c.name,
+      value: c.value,
+      domain: c.domain ?? "",
+      path: c.path ?? "/",
+      secure: c.secure ?? false,
+      httpOnly: c.httpOnly ?? false,
+      sameSite: c.sameSite ?? "Lax" as const,
+      expires: c.expirationDate ?? -1,
+    }));
+
+    await page.setCookies(cookies as Parameters<typeof page.setCookies>[0]);
+
+    return { success: true };
   }
 }

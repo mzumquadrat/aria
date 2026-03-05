@@ -30,7 +30,7 @@ const DEFAULT_OPTIONS: BackgroundExecutorOptions = {
 
 export function createToolExecutor(
   registry: ToolRegistry,
-  options: Partial<BackgroundExecutorOptions> = {}
+  options: Partial<BackgroundExecutorOptions> = {},
 ): TaskHandler<ToolTaskPayload, ToolTaskResult> {
   const config = { ...DEFAULT_OPTIONS, ...options };
 
@@ -89,7 +89,7 @@ export function createToolExecutor(
 export function createBackgroundToolExecutor(
   registry: ToolRegistry,
   bot: Bot,
-  options: Partial<BackgroundExecutorOptions> = {}
+  options: Partial<BackgroundExecutorOptions> = {},
 ): TaskHandler<ToolTaskPayload, ToolTaskResult> {
   const config = { ...DEFAULT_OPTIONS, ...options };
   const continuationManager = getContinuationManager();
@@ -109,7 +109,7 @@ export function createBackgroundToolExecutor(
 async function executeForeground(
   task: QueuedTask<ToolTaskPayload>,
   registry: ToolRegistry,
-  config: BackgroundExecutorOptions
+  config: BackgroundExecutorOptions,
 ): Promise<ToolTaskResult> {
   const startTime = Date.now();
   const { tool, input } = task.payload;
@@ -165,7 +165,7 @@ function executeInBackground(
   task: QueuedTask<ToolTaskPayload>,
   registry: ToolRegistry,
   continuationManager: ReturnType<typeof getContinuationManager>,
-  config: BackgroundExecutorOptions
+  config: BackgroundExecutorOptions,
 ): Promise<ToolTaskResult> {
   const startTime = Date.now();
   const { tool, input } = task.payload;
@@ -178,7 +178,7 @@ function executeInBackground(
     task.context.chatId,
     task.context.userId,
     tool,
-    task.context.messageId
+    task.context.messageId,
   );
 
   (async () => {
@@ -239,7 +239,7 @@ async function sendCompletionNotification(
   continuation: PendingContinuation,
   result: ToolResult,
   duration: number,
-  manager: ReturnType<typeof getContinuationManager>
+  manager: ReturnType<typeof getContinuationManager>,
 ): Promise<void> {
   const output = result.output as { stdout?: string; stderr?: string } | undefined;
   const durationSec = (duration / 1000).toFixed(1);

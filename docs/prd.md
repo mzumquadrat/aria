@@ -7,6 +7,7 @@ A personal assistant application built with TypeScript and Deno, communicating v
 ## 2. Goals & Non-Goals
 
 ### Goals
+
 - Day-to-day personal productivity assistance
 - Natural language interaction via Telegram
 - Extensible via MCP servers and internal skills
@@ -15,6 +16,7 @@ A personal assistant application built with TypeScript and Deno, communicating v
 - Secure shell access with smart approval workflows
 
 ### Non-Goals
+
 - Multi-user support (single user only)
 - Voice/audio interaction
 - Mobile app deployment
@@ -22,16 +24,17 @@ A personal assistant application built with TypeScript and Deno, communicating v
 ## 3. Technical Architecture
 
 ### 3.1 Stack
-| Component | Technology | Rationale |
-|-----------|------------|-----------|
-| Runtime | Deno 2.x | Native TypeScript, built-in tooling |
-| Language | TypeScript 5.x | Type safety, better DX |
-| Bot Framework | grammY | Native Deno support, excellent types |
-| LLM Provider | OpenRouter SDK | Multi-model access, unified API |
-| Extensibility | MCP (Model Context Protocol) | Standardized tool integration |
-| Database | SQLite (via Deno SQLite) | Reliable, embedded, zero-config |
-| Testing | Deno Test | Native test runner, coverage |
-| CI/CD | Git + GitHub Actions | Version control and automation |
+
+| Component     | Technology                   | Rationale                            |
+| ------------- | ---------------------------- | ------------------------------------ |
+| Runtime       | Deno 2.x                     | Native TypeScript, built-in tooling  |
+| Language      | TypeScript 5.x               | Type safety, better DX               |
+| Bot Framework | grammY                       | Native Deno support, excellent types |
+| LLM Provider  | OpenRouter SDK               | Multi-model access, unified API      |
+| Extensibility | MCP (Model Context Protocol) | Standardized tool integration        |
+| Database      | SQLite (via Deno SQLite)     | Reliable, embedded, zero-config      |
+| Testing       | Deno Test                    | Native test runner, coverage         |
+| CI/CD         | Git + GitHub Actions         | Version control and automation       |
 
 ### 3.2 System Architecture
 
@@ -83,12 +86,14 @@ A personal assistant application built with TypeScript and Deno, communicating v
 ## 4. Core Features
 
 ### 4.1 Telegram Interface
+
 - Natural language conversation
 - Command handlers (/help, /status, /tasks, etc.)
 - Inline keyboards for approvals and selections
 - Rich message formatting (markdown, code blocks)
 
 ### 4.2 LLM Integration (OpenRouter)
+
 - Multi-model support via OpenRouter
 - Streaming responses
 - Tool/function calling support
@@ -98,24 +103,28 @@ A personal assistant application built with TypeScript and Deno, communicating v
 ### 4.3 Extensibility System
 
 #### 4.3.1 MCP Server Support
+
 - Load external MCP servers via configuration
 - Discovery and registration of tools/resources
 - Stdio and SSE transport support
 - Lifecycle management (start/stop/reload)
 
 #### 4.3.2 Internal Skills
+
 - TypeScript-based skill modules
 - Hot-reloadable skill definitions
 - Structured input/output schemas (Zod)
 - Permission levels per skill
 
 #### 4.3.3 Self-Extension Capability
+
 - Agent can generate new skills
 - Agent can write MCP server code
 - Code review and testing workflow
 - Safe deployment with rollback
 
 ### 4.4 Task Scheduling
+
 - Cron-based scheduling
 - One-time future tasks
 - Recurring reminders
@@ -130,6 +139,7 @@ A personal assistant application built with TypeScript and Deno, communicating v
 ### 4.5 Shell Access with Security
 
 #### Security Model
+
 1. **Directory Scoping**: Configurable allowed directories
 2. **Command Allowlist/Denylist**: Whitelist safe commands, block dangerous ones
 3. **Smart Approval Workflow**:
@@ -141,6 +151,7 @@ A personal assistant application built with TypeScript and Deno, communicating v
 6. **Timeout Protection**: Commands killed after configurable timeout
 
 #### Implementation Pattern
+
 ```typescript
 interface ShellPolicy {
   allowedDirectories: string[];
@@ -272,24 +283,28 @@ logging:
 ## 7. Testing Strategy
 
 ### 7.1 Unit Tests
+
 - Core logic functions
 - Shell policy enforcement
 - Scheduler logic
 - Skill execution
 
 ### 7.2 Integration Tests
+
 - Telegram message handling
 - OpenRouter API integration
 - MCP server communication
 - SQLite operations
 
 ### 7.3 E2E Tests
+
 - Full conversation flows
 - Task scheduling and execution
 - Shell command workflows
 - Self-extension scenarios
 
 ### 7.4 Security Tests
+
 - Policy bypass attempts
 - Injection attacks
 - Rate limit enforcement
@@ -354,6 +369,7 @@ aria/
 ## 9. Milestones
 
 ### Phase 1: Foundation (Week 1-2)
+
 - [x] Project setup (Deno, TypeScript, git)
 - [ ] Telegram bot with grammY
 - [ ] Basic message handling
@@ -361,17 +377,20 @@ aria/
 - [ ] Configuration system
 
 ### Phase 2: Core Agent (Week 3-4)
+
 - [ ] OpenRouter integration
 - [ ] Conversation management
 - [ ] Basic tool calling
 - [ ] Unit tests
 
 ### Phase 3: Extensibility (Week 5-6)
+
 - [ ] MCP client implementation
 - [ ] Skill registry and loader
 - [ ] Built-in skills (weather, calendar, notes)
 
 ### Phase 4: Shell & Security (Week 7-8)
+
 - [ ] Shell executor with sandboxing
 - [ ] Policy engine
 - [ ] Smart approval workflow
@@ -379,12 +398,14 @@ aria/
 - [ ] Security tests
 
 ### Phase 5: Scheduling (Week 9-10)
+
 - [ ] Task scheduler service
 - [ ] Notification tasks
 - [ ] Script execution tasks
 - [ ] Recurring tasks
 
 ### Phase 6: Self-Extension (Week 11-12)
+
 - [ ] Code generation for skills
 - [ ] MCP server generation
 - [ ] Testing and deployment workflow
@@ -393,6 +414,7 @@ aria/
 ## 10. Security Considerations
 
 ### 10.1 Threats Addressed
+
 - **Prompt Injection**: Sanitize inputs, limit context
 - **Command Injection**: Parse and validate all shell commands
 - **Path Traversal**: Validate and normalize all file paths
@@ -400,6 +422,7 @@ aria/
 - **Denial of Service**: Rate limiting, timeouts, resource quotas
 
 ### 10.2 Security Patterns
+
 1. **Defense in Depth**: Multiple layers of security checks
 2. **Least Privilege**: Minimum required permissions
 3. **Fail Secure**: Default deny on unknown operations
@@ -411,36 +434,42 @@ aria/
 Based on research into current best practices (2026), here are the key security patterns for protecting host systems from AI agents with shell access:
 
 ### 11.1 Container-Based Sandboxing
+
 - Run agent commands in isolated containers (Docker, Podman)
 - Limit container resource allocation (CPU, memory, disk)
 - Use read-only filesystems where possible
 - Network isolation for containerized workloads
 
 ### 11.2 Scoped Tool Permissions
+
 - Define explicit permission boundaries per tool
 - Implement capability-based security model
 - Tools request permissions, not granted by default
 - Time-limited permission tokens
 
 ### 11.3 Human-in-the-Loop Gates
+
 - Approval workflows for destructive operations
 - Configurable sensitivity thresholds
 - Timeout-based auto-reject for pending approvals
 - Audit trail of all approvals/denials
 
 ### 11.4 Process-Scoped Credentials
+
 - Never inherit parent process environment
 - Explicit credential injection per operation
 - Credentials destroyed after use
 - No persistent storage of secrets
 
 ### 11.5 Audit Logging and Observability
+
 - Log all agent actions with full context
 - Structured logging for analysis
 - Real-time monitoring dashboards
 - Alerting on suspicious patterns
 
 ### 11.6 OWASP Top 10 for Agentic AI (2026)
+
 1. **Goal Hijacking**: Prevent agent from being redirected to malicious goals
 2. **Prompt Injection**: Validate and sanitize all inputs
 3. **Rogue Agents**: Implement kill switches and monitoring
@@ -453,25 +482,26 @@ Based on research into current best practices (2026), here are the key security 
 10. **Supply Chain Attacks**: Verify all dependencies and tools
 
 ### 11.7 Recommended Implementation
+
 For Aria, we implement a layered security approach:
 
 ```typescript
 interface SecurityLayer {
   // Layer 1: Command validation
   validateCommand(command: string): ValidationResult;
-  
+
   // Layer 2: Path sandboxing
   isPathAllowed(path: string): boolean;
-  
+
   // Layer 3: Permission check
   checkPermission(operation: Operation): PermissionResult;
-  
+
   // Layer 4: Approval workflow
   requestApproval(operation: Operation): Promise<ApprovalResult>;
-  
+
   // Layer 5: Execution monitoring
   monitorExecution(process: Process): void;
-  
+
   // Layer 6: Audit logging
   logAction(action: Action): void;
 }

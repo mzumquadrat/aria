@@ -1,5 +1,5 @@
 import type { PhotoService } from "../agent/tools.ts";
-import { sendPhotoToChat, sendPhotoByUrlToChat } from "../bot/messaging.ts";
+import { sendPhotoByUrlToChat, sendPhotoToChat } from "../bot/messaging.ts";
 
 export function createPhotoService(): PhotoService {
   return {

@@ -41,10 +41,10 @@ shell:
   mounts:
     - path: ~/projects
       mountPoint: /workspace
-      mode: rw  # read-write
+      mode: rw # read-write
     - path: ~/documents
       mountPoint: /docs
-      mode: ro  # read-only
+      mode: ro # read-only
 ```
 
 ## Memory System

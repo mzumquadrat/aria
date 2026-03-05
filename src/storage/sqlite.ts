@@ -17,7 +17,7 @@ export class SQLiteDatabase {
   async initialize(): Promise<void> {
     const dbDir = dirname(this.path);
     await ensureDir(dbDir);
-    
+
     this.db = new Database(this.path);
     this.runMigrations();
   }
@@ -156,13 +156,19 @@ export class SQLiteDatabase {
     this.db.run(sql, ...params);
   }
 
-  query<T extends object = Record<string, unknown>>(sql: string, ...params: RestBindParameters): T[] {
+  query<T extends object = Record<string, unknown>>(
+    sql: string,
+    ...params: RestBindParameters
+  ): T[] {
     if (!this.db) throw new Error("Database not initialized");
     const stmt = this.db.prepare<T>(sql);
     return stmt.all(...params);
   }
 
-  queryOne<T extends object = Record<string, unknown>>(sql: string, ...params: RestBindParameters): T | undefined {
+  queryOne<T extends object = Record<string, unknown>>(
+    sql: string,
+    ...params: RestBindParameters
+  ): T | undefined {
     if (!this.db) throw new Error("Database not initialized");
     const stmt = this.db.prepare<T>(sql);
     return stmt.get(...params);
@@ -193,7 +199,7 @@ export async function initializeDatabase(config: DatabaseConfig): Promise<SQLite
   if (dbInstance) {
     return dbInstance;
   }
-  
+
   dbInstance = new SQLiteDatabase(config);
   await dbInstance.initialize();
   return dbInstance;

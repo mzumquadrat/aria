@@ -1,7 +1,12 @@
 import type { Bot } from "grammy";
-import type { ScheduledTask, NotificationPayload, SkillPayload, AgentPayload } from "../storage/scheduler/types.ts";
+import type {
+  AgentPayload,
+  NotificationPayload,
+  ScheduledTask,
+  SkillPayload,
+} from "../storage/scheduler/types.ts";
 import { getAgent } from "../agent/mod.ts";
-import { skillRecordToDefinition, executeSkill } from "../skills/mod.ts";
+import { executeSkill, skillRecordToDefinition } from "../skills/mod.ts";
 import { getSkillByName } from "../skills/repository.ts";
 import type { Config } from "../config/mod.ts";
 import { escapeMarkdownV2 } from "../bot/mod.ts";
@@ -17,7 +22,9 @@ export function initializeExecutor(context: ExecutorContext): void {
   executorContext = context;
 }
 
-export async function executeTask(task: ScheduledTask): Promise<{ success: boolean; error?: string }> {
+export async function executeTask(
+  task: ScheduledTask,
+): Promise<{ success: boolean; error?: string }> {
   if (!executorContext) {
     return { success: false, error: "Executor not initialized" };
   }
@@ -41,9 +48,9 @@ export async function executeTask(task: ScheduledTask): Promise<{ success: boole
         return { success: false, error: `Unknown task type: ${(task as { type: string }).type}` };
     }
   } catch (error) {
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Unknown error during task execution" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error during task execution",
     };
   }
 }
@@ -51,15 +58,17 @@ export async function executeTask(task: ScheduledTask): Promise<{ success: boole
 async function executeNotificationTask(
   payload: NotificationPayload,
   bot: Bot,
-  chatId: number
+  chatId: number,
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    await bot.api.sendMessage(chatId, escapeMarkdownV2(payload.message), { parse_mode: "MarkdownV2" });
+    await bot.api.sendMessage(chatId, escapeMarkdownV2(payload.message), {
+      parse_mode: "MarkdownV2",
+    });
     return { success: true };
   } catch (error) {
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to send notification" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to send notification",
     };
   }
 }
@@ -67,11 +76,11 @@ async function executeNotificationTask(
 async function executeSkillTask(
   payload: SkillPayload,
   bot: Bot,
-  chatId: number
+  chatId: number,
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const skill = getSkillByName(payload.skillName);
-    
+
     if (!skill) {
       return { success: false, error: `Skill not found: ${payload.skillName}` };
     }
@@ -84,19 +93,27 @@ async function executeSkillTask(
     });
 
     if (result.success && result.output !== undefined) {
-      const outputStr = typeof result.output === "string" 
-        ? result.output 
+      const outputStr = typeof result.output === "string"
+        ? result.output
         : JSON.stringify(result.output, null, 2);
-      await bot.api.sendMessage(chatId, escapeMarkdownV2(`Skill "${payload.skillName}" completed:\n${outputStr}`), { parse_mode: "MarkdownV2" });
+      await bot.api.sendMessage(
+        chatId,
+        escapeMarkdownV2(`Skill "${payload.skillName}" completed:\n${outputStr}`),
+        { parse_mode: "MarkdownV2" },
+      );
     } else if (!result.success) {
-      await bot.api.sendMessage(chatId, escapeMarkdownV2(`Skill "${payload.skillName}" failed: ${result.error || "Unknown error"}`), { parse_mode: "MarkdownV2" });
+      await bot.api.sendMessage(
+        chatId,
+        escapeMarkdownV2(`Skill "${payload.skillName}" failed: ${result.error || "Unknown error"}`),
+        { parse_mode: "MarkdownV2" },
+      );
     }
 
     return { success: result.success, ...(result.error && { error: result.error }) };
   } catch (error) {
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to execute skill" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to execute skill",
     };
   }
 }
@@ -104,11 +121,11 @@ async function executeSkillTask(
 async function executeAgentTask(
   payload: AgentPayload,
   bot: Bot,
-  chatId: number
+  chatId: number,
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const agent = getAgent();
-    
+
     if (!agent) {
       return { success: false, error: "Agent not initialized" };
     }
@@ -118,14 +135,14 @@ async function executeAgentTask(
     const fullPrompt = `${contextPrefix}${payload.prompt}${contextSuffix}`;
 
     const response = await agent.processMessage(fullPrompt);
-    
+
     await bot.api.sendMessage(chatId, escapeMarkdownV2(response), { parse_mode: "MarkdownV2" });
 
     return { success: true };
   } catch (error) {
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to execute agent task" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to execute agent task",
     };
   }
 }

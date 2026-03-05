@@ -1,6 +1,6 @@
 import type { Config } from "../config/mod.ts";
 import { toolRegistry, type ToolResult } from "./tools.ts";
-import { loadSoul, formatSoulForPrompt } from "../soul/mod.ts";
+import { formatSoulForPrompt, loadSoul } from "../soul/mod.ts";
 import { getLockManager, Mutex } from "./lock.ts";
 import type { MessageContent } from "../vision/types.ts";
 
@@ -69,7 +69,10 @@ export class Agent {
   private historyMutexes: Map<number, Mutex> = new Map();
   private maxHistoryLength: number = 20;
   private onToolCall: ToolCallCallback | null = null;
-  private pendingImages: Map<number, Array<{ imageData: string; mimeType: string; description?: string }>> = new Map();
+  private pendingImages: Map<
+    number,
+    Array<{ imageData: string; mimeType: string; description?: string }>
+  > = new Map();
 
   constructor(config: Config) {
     this.config = config;
@@ -83,14 +86,19 @@ export class Agent {
     if (!this.pendingImages.has(chatId)) {
       this.pendingImages.set(chatId, []);
     }
-    const entry: { imageData: string; mimeType: string; description?: string } = { imageData, mimeType };
+    const entry: { imageData: string; mimeType: string; description?: string } = {
+      imageData,
+      mimeType,
+    };
     if (description !== undefined) {
       entry.description = description;
     }
     this.pendingImages.get(chatId)!.push(entry);
   }
 
-  getPendingImages(chatId: number): Array<{ imageData: string; mimeType: string; description?: string }> {
+  getPendingImages(
+    chatId: number,
+  ): Array<{ imageData: string; mimeType: string; description?: string }> {
     return this.pendingImages.get(chatId) ?? [];
   }
 
@@ -129,7 +137,9 @@ export class Agent {
     const soul = await loadSoul();
     const soulPrompt = formatSoulForPrompt(soul.content);
 
-    const systemMessage = `${SYSTEM_PROMPT}\n\n${soulPrompt}\n\nAvailable tools:\n${JSON.stringify(tools, null, 2)}`;
+    const systemMessage = `${SYSTEM_PROMPT}\n\n${soulPrompt}\n\nAvailable tools:\n${
+      JSON.stringify(tools, null, 2)
+    }`;
 
     this.addToHistory(history, { role: "system", content: systemMessage });
 
@@ -322,8 +332,8 @@ export function getAgent(): Agent | null {
 
 export { getLockManager };
 export {
+  type ContinuationConfig,
   getContinuationManager,
   initializeContinuationManager,
   type PendingContinuation,
-  type ContinuationConfig,
 } from "./continuation.ts";

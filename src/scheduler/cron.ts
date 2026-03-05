@@ -6,12 +6,25 @@ export interface CronParts {
   dayOfWeek: number[];
 }
 
-const MONTH_NAMES = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+const MONTH_NAMES = [
+  "jan",
+  "feb",
+  "mar",
+  "apr",
+  "may",
+  "jun",
+  "jul",
+  "aug",
+  "sep",
+  "oct",
+  "nov",
+  "dec",
+];
 const DAY_NAMES = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 
 export function parseCron(expression: string): CronParts | null {
   const parts = expression.trim().toLowerCase().split(/\s+/);
-  
+
   if (parts.length !== 5) {
     return null;
   }
@@ -33,7 +46,7 @@ function parseCronPart(
   part: string,
   min: number,
   max: number,
-  names?: string[]
+  names?: string[],
 ): number[] {
   if (part === "*") {
     return range(min, max);
@@ -99,9 +112,13 @@ function range(start: number, end: number): number[] {
 
 export function validateCron(expression: string): { valid: boolean; error?: string } {
   const parts = parseCron(expression);
-  
+
   if (!parts) {
-    return { valid: false, error: "Invalid cron expression format. Expected 5 fields: minute hour day-of-month month day-of-week" };
+    return {
+      valid: false,
+      error:
+        "Invalid cron expression format. Expected 5 fields: minute hour day-of-month month day-of-week",
+    };
   }
 
   return { valid: true };
@@ -162,7 +179,11 @@ export function getNextOccurrence(expression: string, from: Date = new Date()): 
   return null;
 }
 
-export function getNextOccurrences(expression: string, count: number, from: Date = new Date()): Date[] {
+export function getNextOccurrences(
+  expression: string,
+  count: number,
+  from: Date = new Date(),
+): Date[] {
   const results: Date[] = [];
   let current = from;
 

@@ -2,7 +2,15 @@ import type { Bot } from "grammy";
 import type { Config } from "../config/mod.ts";
 import type { ElevenLabsService } from "../elevenlabs/mod.ts";
 import { createAuthMiddleware, createLoggingMiddleware } from "./middleware/mod.ts";
-import { handleStart, handleHelp, handleStatus, handleMessage, handlePhoto, setupVoiceHandler, setupSkillHandlers } from "./handlers/mod.ts";
+import {
+  handleHelp,
+  handleMessage,
+  handlePhoto,
+  handleStart,
+  handleStatus,
+  setupSkillHandlers,
+  setupVoiceHandler,
+} from "./handlers/mod.ts";
 
 export function setupBot(bot: Bot, config: Config, elevenLabs?: ElevenLabsService): void {
   bot.use(createLoggingMiddleware());
@@ -23,5 +31,10 @@ export function setupBot(bot: Bot, config: Config, elevenLabs?: ElevenLabsServic
 }
 
 export { createBot, startBot, stopBot } from "./index.ts";
-export { initializeMessaging, sendMessage, sendMessageToChat, getAllowedUserId } from "./messaging.ts";
+export {
+  getAllowedUserId,
+  initializeMessaging,
+  sendMessage,
+  sendMessageToChat,
+} from "./messaging.ts";
 export { escapeMarkdownV2 } from "./utils.ts";

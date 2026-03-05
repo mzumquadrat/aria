@@ -14,22 +14,30 @@ export async function importFromUrl(url: string): Promise<ImportResult> {
   try {
     const response = await fetch(url);
     if (!response.ok) {
-      return { success: false, error: `Failed to fetch URL: ${response.status} ${response.statusText}` };
+      return {
+        success: false,
+        error: `Failed to fetch URL: ${response.status} ${response.statusText}`,
+      };
     }
     const content = await response.text();
     return parseSkillMarkdown(content);
   } catch (error) {
-    return { success: false, error: `Failed to import from URL: ${error instanceof Error ? error.message : "Unknown error"}` };
+    return {
+      success: false,
+      error: `Failed to import from URL: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`,
+    };
   }
 }
 
 export async function importFromGitRepo(
   repoUrl: string,
-  skillPath: string = "skill.md"
+  skillPath: string = "skill.md",
 ): Promise<ImportResult> {
   try {
     const tempDir = await Deno.makeTempDir();
-    
+
     try {
       const cloneCommand = new Deno.Command("git", {
         args: ["clone", "--depth", "1", repoUrl, tempDir],
@@ -55,7 +63,12 @@ export async function importFromGitRepo(
       await Deno.remove(tempDir, { recursive: true }).catch(() => {});
     }
   } catch (error) {
-    return { success: false, error: `Failed to import from git: ${error instanceof Error ? error.message : "Unknown error"}` };
+    return {
+      success: false,
+      error: `Failed to import from git: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`,
+    };
   }
 }
 
@@ -79,9 +92,9 @@ export async function importFromGithubGist(gistUrl: string): Promise<ImportResul
 
     const data = await response.json();
     const files = data.files as Record<string, { content: string }>;
-    
+
     const skillFile = Object.keys(files).find(
-      (f) => f.endsWith(".md") || f === "skill.md" || f.endsWith("skill.md")
+      (f) => f.endsWith(".md") || f === "skill.md" || f.endsWith("skill.md"),
     );
 
     if (!skillFile || !files[skillFile]) {
@@ -90,7 +103,12 @@ export async function importFromGithubGist(gistUrl: string): Promise<ImportResul
 
     return parseSkillMarkdown(files[skillFile].content);
   } catch (error) {
-    return { success: false, error: `Failed to import from Gist: ${error instanceof Error ? error.message : "Unknown error"}` };
+    return {
+      success: false,
+      error: `Failed to import from Gist: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`,
+    };
   }
 }
 
@@ -104,7 +122,7 @@ export function detectImportSource(input: string): { type: string; target: strin
     }
     return { type: "url", target: input };
   }
-  
+
   if (input.endsWith(".git") || input.includes("git@")) {
     return { type: "git", target: input };
   }

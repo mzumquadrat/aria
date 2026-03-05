@@ -119,7 +119,9 @@ export function shouldRequireApproval(
 
       return {
         action: "Type into input field",
-        details: `Selector: ${selector}, Text length: ${(input.text as string)?.length ?? 0} characters`,
+        details: `Selector: ${selector}, Text length: ${
+          (input.text as string)?.length ?? 0
+        } characters`,
         sensitiveAction: false,
       };
     }

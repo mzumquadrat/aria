@@ -56,7 +56,7 @@ export class ElevenLabsService {
             similarity_boost: 0.75,
           },
         }),
-      }
+      },
     );
 
     if (!response.ok) {

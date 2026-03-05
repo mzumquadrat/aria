@@ -5,19 +5,19 @@ import type { Config } from "../../config/mod.ts";
 import { escapeMarkdownV2, escapeMarkdownV2CodeBlock } from "../utils.ts";
 import {
   createSkill,
+  deleteSkill as deleteSkillFromRepo,
+  detectImportSource,
+  executeSkill,
+  generateSkillFromPrompt,
   getAllSkills,
   getSkillByName,
-  deleteSkill as deleteSkillFromRepo,
-  skillRecordToDefinition,
-  executeSkill,
-  importFromUrl,
-  importFromGitRepo,
-  importFromGithubGist,
   importFromArrayBuffer,
-  generateSkillFromPrompt,
+  importFromGithubGist,
+  importFromGitRepo,
+  importFromUrl,
+  skillRecordToDefinition,
   skillToMarkdown,
   validateSkillCode,
-  detectImportSource,
 } from "../../skills/mod.ts";
 
 export function createSkillHandlers(config: Config) {
@@ -31,7 +31,11 @@ export function createSkillHandlers(config: Config) {
       }
 
       const list = skills
-        .map((s, i) => `${i + 1}\\. *${escapeMarkdownV2(s.name)}*\n   ${escapeMarkdownV2(s.description.slice(0, 100))}${s.description.length > 100 ? "\\\\.\\.\\." : ""}`)
+        .map((s, i) =>
+          `${i + 1}\\. *${escapeMarkdownV2(s.name)}*\n   ${
+            escapeMarkdownV2(s.description.slice(0, 100))
+          }${s.description.length > 100 ? "\\\\.\\.\\." : ""}`
+        )
         .join("\n\n");
 
       await ctx.reply(`*Available Skills:*\n\n${list}`, { parse_mode: "MarkdownV2" });
@@ -49,9 +53,18 @@ export function createSkillHandlers(config: Config) {
       const markdown = skillToMarkdown(definition);
 
       if (markdown.length > 4000) {
-        await ctx.reply(`*${escapeMarkdownV2(skill.name)}*\n\n${escapeMarkdownV2(skill.description)}\n\n_Code too long to display\\. Use /exportskill ${escapeMarkdownV2(skill.name)} to get the full file\\._`, { parse_mode: "MarkdownV2" });
+        await ctx.reply(
+          `*${escapeMarkdownV2(skill.name)}*\n\n${
+            escapeMarkdownV2(skill.description)
+          }\n\n_Code too long to display\\. Use /exportskill ${
+            escapeMarkdownV2(skill.name)
+          } to get the full file\\._`,
+          { parse_mode: "MarkdownV2" },
+        );
       } else {
-        await ctx.reply(`\`\`\`\n${escapeMarkdownV2CodeBlock(markdown)}\n\`\`\``, { parse_mode: "MarkdownV2" });
+        await ctx.reply(`\`\`\`\n${escapeMarkdownV2CodeBlock(markdown)}\n\`\`\``, {
+          parse_mode: "MarkdownV2",
+        });
       }
     },
 
@@ -81,9 +94,19 @@ export function createSkillHandlers(config: Config) {
         const output = typeof result.output === "object"
           ? JSON.stringify(result.output, null, 2)
           : String(result.output);
-        await ctx.reply(`*Result* \\(${result.duration}ms\\):\n\`\`\`\n${escapeMarkdownV2CodeBlock(output)}\n\`\`\``, { parse_mode: "MarkdownV2" });
+        await ctx.reply(
+          `*Result* \\(${result.duration}ms\\):\n\`\`\`\n${
+            escapeMarkdownV2CodeBlock(output)
+          }\n\`\`\``,
+          { parse_mode: "MarkdownV2" },
+        );
       } else {
-        await ctx.reply(`*Error* \\(${result.duration}ms\\):\n${escapeMarkdownV2(result.error || "Unknown error")}`, { parse_mode: "MarkdownV2" });
+        await ctx.reply(
+          `*Error* \\(${result.duration}ms\\):\n${
+            escapeMarkdownV2(result.error || "Unknown error")
+          }`,
+          { parse_mode: "MarkdownV2" },
+        );
       }
     },
 
@@ -125,7 +148,9 @@ export function createSkillHandlers(config: Config) {
 
       const existing = getSkillByName(result.skill.name);
       if (existing) {
-        await ctx.reply(`A skill named "${result.skill.name}" already exists. Delete it first or use a different name.`);
+        await ctx.reply(
+          `A skill named "${result.skill.name}" already exists. Delete it first or use a different name.`,
+        );
         return;
       }
 
@@ -151,7 +176,9 @@ export function createSkillHandlers(config: Config) {
 
       const existing = getSkillByName(result.skill.name);
       if (existing) {
-        await ctx.reply(`A skill named "${result.skill.name}" already exists. Delete it first or use a different name.`);
+        await ctx.reply(
+          `A skill named "${result.skill.name}" already exists. Delete it first or use a different name.`,
+        );
         return;
       }
 
@@ -191,7 +218,12 @@ export function createSkillHandlers(config: Config) {
       }
 
       const created = createSkill(result.skill);
-      await ctx.reply(`Skill "${escapeMarkdownV2(created.name)}" created successfully\\!\n\n*Description:* ${escapeMarkdownV2(created.description)}`, { parse_mode: "MarkdownV2" });
+      await ctx.reply(
+        `Skill "${escapeMarkdownV2(created.name)}" created successfully\\!\n\n*Description:* ${
+          escapeMarkdownV2(created.description)
+        }`,
+        { parse_mode: "MarkdownV2" },
+      );
     },
 
     deleteSkill: async (ctx: Context, name: string): Promise<void> => {
@@ -222,7 +254,10 @@ export function createSkillHandlers(config: Config) {
       const markdown = skillToMarkdown(definition);
 
       await ctx.replyWithDocument(
-        new InputFile(new Blob([markdown], { type: "text/markdown" }), `${skill.name.toLowerCase().replace(/\s+/g, "_")}.md`)
+        new InputFile(
+          new Blob([markdown], { type: "text/markdown" }),
+          `${skill.name.toLowerCase().replace(/\s+/g, "_")}.md`,
+        ),
       );
     },
   };

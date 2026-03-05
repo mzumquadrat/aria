@@ -10,7 +10,8 @@ export class VisionService {
   async analyzeImage(input: AnalyzeImageInput): Promise<string> {
     const { imageData, mimeType, prompt, context } = input;
 
-    const systemPrompt = `You are a visual analysis assistant. Analyze images and provide detailed, helpful descriptions.
+    const systemPrompt =
+      `You are a visual analysis assistant. Analyze images and provide detailed, helpful descriptions.
 ${context ? `Context: ${context}` : ""}
 
 When analyzing images:
@@ -68,7 +69,8 @@ Be thorough but concise. Focus on what's most relevant.`;
     prompt?: string,
     context?: string,
   ): Promise<string> {
-    const systemPrompt = `You are a visual analysis assistant. Analyze multiple images and provide detailed, helpful descriptions.
+    const systemPrompt =
+      `You are a visual analysis assistant. Analyze multiple images and provide detailed, helpful descriptions.
 ${context ? `Context: ${context}` : ""}
 
 When analyzing images:

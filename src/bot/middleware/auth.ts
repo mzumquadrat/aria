@@ -8,7 +8,7 @@ export function createAuthMiddleware(config: Config) {
     }
 
     const allowedUserId = config.telegram.allowedUserId;
-    
+
     if (allowedUserId && ctx.from.id !== allowedUserId) {
       console.warn(`Unauthorized access attempt from user ${ctx.from.id}`);
       await ctx.reply("Sorry, you are not authorized to use this bot.");

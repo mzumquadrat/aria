@@ -1,5 +1,5 @@
 import { CalDAVClient, GoogleCalendarClient } from "@tijs/deno-calendar";
-import type { CalendarConfig, CalDAVConfig, GoogleCalendarConfig } from "../config/types.ts";
+import type { CalDAVConfig, CalendarConfig, GoogleCalendarConfig } from "../config/types.ts";
 
 export interface CalendarEvent {
   id: string;
@@ -140,22 +140,35 @@ export class CalendarService {
 
       const events = await caldavClient.fetchEvents(days, calendar || null);
 
-      return events.map((event: { uid: string; summary: string; start: string; end: string | null; description: string | null; location: string | null; timezone?: string; etag?: string }) => {
-        const calUrl = targetCal.url.endsWith("/") ? targetCal.url : `${targetCal.url}/`;
-        const eventUrl = event.uid ? `${calUrl}${event.uid}.ics` : undefined;
-        return {
-          id: event.uid,
-          uid: event.uid,
-          summary: event.summary,
-          description: event.description,
-          start: event.start,
-          end: event.end,
-          location: event.location,
-          timezone: event.timezone,
-          etag: event.etag,
-          eventUrl,
-        };
-      });
+      return events.map(
+        (
+          event: {
+            uid: string;
+            summary: string;
+            start: string;
+            end: string | null;
+            description: string | null;
+            location: string | null;
+            timezone?: string;
+            etag?: string;
+          },
+        ) => {
+          const calUrl = targetCal.url.endsWith("/") ? targetCal.url : `${targetCal.url}/`;
+          const eventUrl = event.uid ? `${calUrl}${event.uid}.ics` : undefined;
+          return {
+            id: event.uid,
+            uid: event.uid,
+            summary: event.summary,
+            description: event.description,
+            start: event.start,
+            end: event.end,
+            location: event.location,
+            timezone: event.timezone,
+            etag: event.etag,
+            eventUrl,
+          };
+        },
+      );
     } else {
       const googleClient = client as GoogleCalendarClient;
       const events = await googleClient.fetchEvents({
@@ -163,7 +176,17 @@ export class CalendarService {
         calendar: calendar || "primary",
       });
 
-      return events.map((event: { uid: string; summary: string; start: string; end: string | null; description: string | null; location: string | null; timezone?: string }) => ({
+      return events.map((
+        event: {
+          uid: string;
+          summary: string;
+          start: string;
+          end: string | null;
+          description: string | null;
+          location: string | null;
+          timezone?: string;
+        },
+      ) => ({
         id: event.uid,
         uid: event.uid,
         summary: event.summary,
@@ -319,7 +342,11 @@ export class CalendarService {
       if (input.timezone) eventInput.timezone = input.timezone;
 
       const eventId = input.eventUrl;
-      const result = await googleClient.updateEvent(targetCalendar || "primary", eventId, eventInput);
+      const result = await googleClient.updateEvent(
+        targetCalendar || "primary",
+        eventId,
+        eventInput,
+      );
 
       return {
         id: eventId,

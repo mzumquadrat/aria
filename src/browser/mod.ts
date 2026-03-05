@@ -7,8 +7,7 @@ export { BrowserConfigSchema } from "./types.ts";
 export type { BrowserConfig } from "./types.ts";
 export { BrowserSession } from "./session.ts";
 export { ApprovalManager } from "./approval.ts";
-export { BrowserToolExecutor, BROWSER_TOOLS } from "./tools.ts";
-export { CDPClient } from "./cdp.ts";
+export { BROWSER_TOOLS, BrowserToolExecutor } from "./tools.ts";
 export { PageOperations } from "./page.ts";
 
 export interface BrowserService {

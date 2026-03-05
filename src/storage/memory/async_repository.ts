@@ -1,12 +1,12 @@
 import { getAsyncDatabase } from "../async.ts";
 import { generateUUIDv4 } from "../uuid.ts";
 import type {
-  Memory,
   CreateMemoryInput,
-  UpdateMemoryInput,
-  MemorySearchResult,
-  MemorySearchOptions,
+  Memory,
   MemoryCategory,
+  MemorySearchOptions,
+  MemorySearchResult,
+  UpdateMemoryInput,
 } from "./types.ts";
 
 interface MemoryRow {
@@ -54,7 +54,7 @@ export class AsyncMemoryRepository {
       metadata,
       now,
       now,
-      now
+      now,
     );
 
     return {
@@ -74,7 +74,7 @@ export class AsyncMemoryRepository {
     const asyncDb = getAsyncDatabase();
     const row = await asyncDb.queryOne<MemoryRow>(
       "SELECT * FROM memories WHERE id = ?",
-      id
+      id,
     );
 
     if (!row) return null;
@@ -84,7 +84,7 @@ export class AsyncMemoryRepository {
       "UPDATE memories SET last_accessed_at = ?, access_count = ? WHERE id = ?",
       new Date().toISOString(),
       newAccessCount,
-      id
+      id,
     );
 
     const memory = rowToMemory(row);
@@ -150,7 +150,7 @@ export class AsyncMemoryRepository {
     const asyncDb = getAsyncDatabase();
     await asyncDb.runSql(
       `UPDATE memories SET ${updates.join(", ")} WHERE id = ?`,
-      ...values
+      ...values,
     );
 
     return this.getById(id);
@@ -160,7 +160,7 @@ export class AsyncMemoryRepository {
     const asyncDb = getAsyncDatabase();
     const result = await asyncDb.queryOne<{ count: number }>(
       "SELECT COUNT(*) as count FROM memories WHERE id = ?",
-      id
+      id,
     );
 
     if (!result || result.count === 0) return false;
@@ -242,7 +242,7 @@ export class AsyncMemoryRepository {
     const asyncDb = getAsyncDatabase();
     const rows = await asyncDb.query<MemoryRow>(
       "SELECT * FROM memories ORDER BY created_at DESC LIMIT ?",
-      limit
+      limit,
     );
     return rows.map(rowToMemory);
   }
@@ -251,7 +251,7 @@ export class AsyncMemoryRepository {
     const asyncDb = getAsyncDatabase();
     const rows = await asyncDb.query<MemoryRow>(
       "SELECT * FROM memories ORDER BY importance DESC, created_at DESC LIMIT ?",
-      limit
+      limit,
     );
     return rows.map(rowToMemory);
   }
@@ -260,7 +260,7 @@ export class AsyncMemoryRepository {
     const asyncDb = getAsyncDatabase();
     const rows = await asyncDb.query<MemoryRow>(
       "SELECT * FROM memories ORDER BY access_count DESC, importance DESC LIMIT ?",
-      limit
+      limit,
     );
     return rows.map(rowToMemory);
   }
@@ -269,7 +269,7 @@ export class AsyncMemoryRepository {
     const asyncDb = getAsyncDatabase();
     const rows = await asyncDb.query<MemoryRow>(
       "SELECT * FROM memories WHERE category = ? ORDER BY importance DESC, created_at DESC",
-      category
+      category,
     );
     return rows.map(rowToMemory);
   }
@@ -277,7 +277,7 @@ export class AsyncMemoryRepository {
   async count(): Promise<number> {
     const asyncDb = getAsyncDatabase();
     const result = await asyncDb.queryOne<{ count: number }>(
-      "SELECT COUNT(*) as count FROM memories"
+      "SELECT COUNT(*) as count FROM memories",
     );
     return result?.count ?? 0;
   }
@@ -286,7 +286,7 @@ export class AsyncMemoryRepository {
     const asyncDb = getAsyncDatabase();
     const result = await asyncDb.queryOne<{ count: number }>(
       "SELECT COUNT(*) as count FROM memories WHERE category = ?",
-      category
+      category,
     );
     return result?.count ?? 0;
   }

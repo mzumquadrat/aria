@@ -42,7 +42,7 @@ export class ContinuationManager {
     chatId: number,
     userId: number,
     toolName: string,
-    messageId?: number
+    messageId?: number,
   ): PendingContinuation {
     const continuation: PendingContinuation = {
       id,
@@ -98,7 +98,7 @@ export class ContinuationManager {
 
   getPendingContinuations(): PendingContinuation[] {
     return Array.from(this.continuations.values()).filter(
-      (c) => c.status === "running"
+      (c) => c.status === "running",
     );
   }
 
@@ -122,7 +122,7 @@ export class ContinuationManager {
 
   async continueConversation(
     continuation: PendingContinuation,
-    prompt: string
+    prompt: string,
   ): Promise<string | undefined> {
     const agent = getAgent();
     if (!agent) {
@@ -162,7 +162,7 @@ export class ContinuationManager {
 let continuationManagerInstance: ContinuationManager | null = null;
 
 export function initializeContinuationManager(
-  config?: Partial<ContinuationConfig>
+  config?: Partial<ContinuationConfig>,
 ): ContinuationManager {
   continuationManagerInstance = new ContinuationManager(config);
   return continuationManagerInstance;

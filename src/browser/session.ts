@@ -1,202 +1,166 @@
-import { CDPClient } from "./cdp.ts";
+import { launch } from "@astral/astral";
+import type { Browser, Page } from "@astral/astral";
 import type { BrowserConfig, TabInfo } from "./types.ts";
 
-interface TargetInfo {
-  targetId: string;
-  type: string;
-  url: string;
-  title?: string;
-  attached?: boolean;
+let pageIdCounter = 0;
+const pageIdMap = new WeakMap<Page, string>();
+
+function getPageId(page: Page): string {
+  let id = pageIdMap.get(page);
+  if (!id) {
+    id = `page_${++pageIdCounter}`;
+    pageIdMap.set(page, id);
+  }
+  return id;
 }
 
 export class BrowserSession {
-  private client: CDPClient;
-  private activeTargetId: string | null = null;
-  private sessionId: string | null = null;
-  private targets = new Map<string, TargetInfo>();
+  private browser: Browser | null = null;
+  private activePage: Page | null = null;
   private config: BrowserConfig;
 
   constructor(config: BrowserConfig) {
     this.config = config;
-    this.client = new CDPClient(config.cdpEndpoint, config.defaultTimeout);
   }
 
   async connect(): Promise<void> {
-    await this.client.connect();
-    this.setupEventHandlers();
-    await this.discoverAndAttachTargets();
+    await this.launch();
   }
 
-  private setupEventHandlers(): void {
-    this.client.on("Target.targetCreated", (event) => {
-      if (event.params && "targetInfo" in event.params) {
-        const info = event.params.targetInfo as TargetInfo;
-        this.targets.set(info.targetId, info);
-      }
-    });
+  private async launch(): Promise<void> {
+    const options: { headless: boolean; path?: string } = {
+      headless: this.config.headless,
+    };
 
-    this.client.on("Target.targetDestroyed", (event) => {
-      if (event.params && "targetId" in event.params) {
-        this.targets.delete(event.params.targetId as string);
-      }
-    });
-
-    this.client.on("Target.targetInfoChanged", (event) => {
-      if (event.params && "targetInfo" in event.params) {
-        const info = event.params.targetInfo as TargetInfo;
-        this.targets.set(info.targetId, info);
-      }
-    });
-  }
-
-  private async discoverAndAttachTargets(): Promise<void> {
-    await this.client.send("Target.setDiscoverTargets", { discover: true });
-
-    const result = await this.client.send<{ targetInfos: TargetInfo[] }>("Target.getTargets");
-    for (const target of result.targetInfos) {
-      this.targets.set(target.targetId, target);
+    if (this.config.browserPath) {
+      options.path = this.config.browserPath;
     }
 
-    const pageTarget = result.targetInfos.find((t) => t.type === "page");
-    if (pageTarget) {
-      await this.attachToTarget(pageTarget.targetId);
+    this.browser = await launch(options);
+
+    const pages = this.browser.pages;
+    if (pages.length > 0) {
+      this.activePage = pages[0];
+    } else {
+      this.activePage = await this.browser.newPage();
     }
+
+    console.log("[Browser] Launched successfully");
   }
 
   async reconnect(): Promise<void> {
-    const previousTargetId = this.activeTargetId;
-    
-    this.activeTargetId = null;
-    this.sessionId = null;
-    this.targets.clear();
-
-    await this.client.reconnect();
-    this.setupEventHandlers();
-    await this.discoverAndAttachTargets();
-
-    if (previousTargetId && this.targets.has(previousTargetId)) {
-      await this.attachToTarget(previousTargetId);
-    }
+    await this.close();
+    await this.launch();
   }
 
-  private async enablePageDomains(): Promise<void> {
-    const sessionId = this.sessionId ?? undefined;
-    await this.client.send("Page.enable", {}, sessionId);
-    await this.client.send("Runtime.enable", {}, sessionId);
-    await this.client.send("DOM.enable", {}, sessionId);
-    await this.client.send("Network.enable", {}, sessionId);
+  async close(): Promise<void> {
+    if (this.browser) {
+      await this.browser.close();
+      this.browser = null;
+      this.activePage = null;
+    }
   }
 
   disconnect(): void {
-    this.client.disconnect();
-    this.activeTargetId = null;
-    this.sessionId = null;
-    this.targets.clear();
-  }
-
-  private async attachToTarget(targetId: string): Promise<void> {
-    const result = await this.client.send<{ sessionId: string }>(
-      "Target.attachToTarget",
-      { targetId, flatten: true },
-    );
-
-    this.activeTargetId = targetId;
-    this.sessionId = result.sessionId;
-
-    await this.enablePageDomains();
+    if (this.browser) {
+      this.browser.close().catch((err: Error) => {
+        console.warn("[Browser] Error during disconnect:", err);
+      });
+      this.browser = null;
+      this.activePage = null;
+    }
   }
 
   async createNewTab(url?: string): Promise<TabInfo> {
-    const result = await this.client.send<{ targetId: string }>("Target.createTarget", {
-      url: url ?? "about:blank",
-    });
+    if (!this.browser) {
+      throw new Error("Browser not connected");
+    }
 
-    const targetId = result.targetId;
+    const page = await this.browser.newPage(url);
+    this.activePage = page;
 
-    await new Promise<void>((resolve) => {
-      const checkTarget = (): void => {
-        const target = this.targets.get(targetId);
-        if (target) {
-          resolve();
-        } else {
-          setTimeout(checkTarget, 50);
-        }
-      };
-      checkTarget();
-    });
-
-    await this.attachToTarget(targetId);
-
-    return this.getTabInfo(targetId);
+    return this.getTabInfo(page);
   }
 
   async closeTab(tabId: string): Promise<void> {
-    if (tabId === this.activeTargetId) {
-      const otherTabs = Array.from(this.targets.entries())
-        .filter(([id, info]) => id !== tabId && info.type === "page");
-
-      if (otherTabs.length > 0) {
-        await this.attachToTarget(otherTabs[0][0]);
-      }
+    if (!this.browser) {
+      throw new Error("Browser not connected");
     }
 
-    await this.client.send("Target.closeTarget", { targetId: tabId });
-  }
+    const pages = this.browser.pages;
+    const page = pages.find((p: Page) => getPageId(p) === tabId);
 
-  async switchToTab(tabId: string): Promise<TabInfo> {
-    const target = this.targets.get(tabId);
-    if (!target) {
+    if (!page) {
       throw new Error(`Tab not found: ${tabId}`);
     }
 
-    if (tabId !== this.activeTargetId) {
-      await this.attachToTarget(tabId);
+    if (pages.length <= 1) {
+      throw new Error("Cannot close the last remaining tab");
     }
 
-    return this.getTabInfo(tabId);
+    if (page === this.activePage) {
+      const otherPages = pages.filter((p: Page) => p !== page);
+      this.activePage = otherPages[0] ?? null;
+    }
+
+    await page.close();
+  }
+
+  switchToTab(tabId: string): TabInfo {
+    if (!this.browser) {
+      throw new Error("Browser not connected");
+    }
+
+    const pages = this.browser.pages;
+    const page = pages.find((p: Page) => getPageId(p) === tabId);
+
+    if (!page) {
+      throw new Error(`Tab not found: ${tabId}`);
+    }
+
+    this.activePage = page;
+
+    return this.getTabInfo(page);
   }
 
   listTabs(): TabInfo[] {
-    const tabs: TabInfo[] = [];
-
-    for (const [id, info] of this.targets) {
-      if (info.type === "page") {
-        tabs.push({
-          id,
-          url: info.url,
-          title: info.title ?? "",
-          isActive: id === this.activeTargetId,
-        });
-      }
+    if (!this.browser) {
+      return [];
     }
 
-    return tabs;
+    return this.browser.pages.map((p: Page) => this.getTabInfo(p));
   }
 
-  private getTabInfo(targetId: string): TabInfo {
-    const target = this.targets.get(targetId);
-    if (!target) {
-      throw new Error(`Target not found: ${targetId}`);
+  private getTabInfo(page: Page): TabInfo {
+    let url = "about:blank";
+    const title = "";
+
+    try {
+      url = page.url || "about:blank";
+    } catch {
+      // Page might be about:blank or navigating
     }
 
     return {
-      id: targetId,
-      url: target.url,
-      title: target.title ?? "",
-      isActive: targetId === this.activeTargetId,
+      id: getPageId(page),
+      url,
+      title,
+      isActive: page === this.activePage,
     };
   }
 
-  getClient(): CDPClient {
-    return this.client;
+  getActivePage(): Page {
+    if (!this.activePage) {
+      throw new Error("No active page");
+    }
+    return this.activePage;
   }
 
-  getSessionId(): string | null {
-    return this.sessionId;
-  }
-
-  getActiveTargetId(): string | null {
-    return this.activeTargetId;
+  getBrowser(): Browser {
+    if (!this.browser) {
+      throw new Error("Browser not connected");
+    }
+    return this.browser;
   }
 
   getConfig(): BrowserConfig {
@@ -204,6 +168,6 @@ export class BrowserSession {
   }
 
   get connected(): boolean {
-    return this.client.connected;
+    return this.browser !== null;
   }
 }

@@ -1,5 +1,5 @@
 import { assertEquals } from "@std/assert";
-import { Mutex, LockManager } from "../../src/agent/lock.ts";
+import { LockManager, Mutex } from "../../src/agent/lock.ts";
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));

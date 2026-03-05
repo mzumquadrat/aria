@@ -292,7 +292,8 @@ const BUILTIN_TOOLS: Tool[] = [
         },
         mimeType: {
           type: "string",
-          description: "MIME type of the image (e.g., image/jpeg, image/png). Required if using imageData.",
+          description:
+            "MIME type of the image (e.g., image/jpeg, image/png). Required if using imageData.",
         },
         prompt: {
           type: "string",
@@ -755,7 +756,10 @@ export class ToolRegistry {
     }
   }
 
-  private async executeBrowserTool(tool: string, input: Record<string, unknown>): Promise<ToolResult> {
+  private async executeBrowserTool(
+    tool: string,
+    input: Record<string, unknown>,
+  ): Promise<ToolResult> {
     if (!this.browserService) {
       return { tool, success: false, error: "Browser service not configured" };
     }

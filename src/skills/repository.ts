@@ -32,7 +32,7 @@ export function createSkill(skill: SkillDefinition): SkillRecord {
     skill.name,
     skill.description,
     skill.code,
-    schema
+    schema,
   );
 
   return {
@@ -50,7 +50,7 @@ export function getSkillById(id: string): SkillRecord | null {
   const db = getDatabase();
   const row = db.queryOne<Record<string, unknown>>(
     "SELECT * FROM skills WHERE id = ?",
-    id
+    id,
   );
   return row ? rowToSkillRecord(row) : null;
 }
@@ -59,7 +59,7 @@ export function getSkillByName(name: string): SkillRecord | null {
   const db = getDatabase();
   const row = db.queryOne<Record<string, unknown>>(
     "SELECT * FROM skills WHERE name = ?",
-    name
+    name,
   );
   return row ? rowToSkillRecord(row) : null;
 }
@@ -73,13 +73,16 @@ export function getAllSkills(enabledOnly: boolean = false): SkillRecord[] {
   return rows.map(rowToSkillRecord);
 }
 
-export function updateSkill(id: string, updates: Partial<SkillDefinition>): Promise<SkillRecord | null> {
+export function updateSkill(
+  id: string,
+  updates: Partial<SkillDefinition>,
+): Promise<SkillRecord | null> {
   const db = getDatabase();
   const existing = getSkillById(id);
   if (!existing) return Promise.resolve(null);
 
   const schema = JSON.parse(existing.schema);
-  
+
   if (updates.name) {
     db.run("UPDATE skills SET name = ? WHERE id = ?", updates.name, id);
   }

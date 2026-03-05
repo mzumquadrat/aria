@@ -8,11 +8,14 @@ import type {
   EvaluateInput,
   ExtractLinksInput,
   GetContentInput,
+  GetCookiesInput,
   NavigateInput,
   NewTabInput,
-  // ScreenshotInput,
+  PdfInput,
+  ScreenshotInput,
   ScrollInput,
   SelectInput,
+  SetCookiesInput,
   SwitchTabInput,
   TypeInput,
   WaitForInput,
@@ -21,14 +24,16 @@ import type {
 export const browserNavigateTool: Tool = {
   type: "builtin",
   name: "browser_navigate",
-  description: "Navigate the browser to a specified URL. Use this to load web pages for interaction or content extraction.",
+  description:
+    "Navigate the browser to a specified URL. Use this to load web pages for interaction or content extraction.",
   inputSchema: {
     type: "object",
     properties: {
       url: { type: "string", description: "The URL to navigate to" },
       waitUntil: {
         type: "string",
-        description: "When to consider navigation complete: 'load', 'domcontentloaded', or 'networkidle'",
+        description:
+          "When to consider navigation complete: 'load', 'domcontentloaded', or 'networkidle'",
         enum: ["load", "domcontentloaded", "networkidle"],
       },
     },
@@ -39,12 +44,17 @@ export const browserNavigateTool: Tool = {
 export const browserClickTool: Tool = {
   type: "builtin",
   name: "browser_click",
-  description: "Click an element on the page using a CSS selector. Use for buttons, links, and other clickable elements.",
+  description:
+    "Click an element on the page using a CSS selector. Use for buttons, links, and other clickable elements.",
   inputSchema: {
     type: "object",
     properties: {
       selector: { type: "string", description: "CSS selector for the element to click" },
-      button: { type: "string", description: "Mouse button: 'left', 'right', or 'middle'", enum: ["left", "right", "middle"] },
+      button: {
+        type: "string",
+        description: "Mouse button: 'left', 'right', or 'middle'",
+        enum: ["left", "right", "middle"],
+      },
       clickCount: { type: "number", description: "Number of clicks (1 for single, 2 for double)" },
     },
     required: ["selector"],
@@ -54,7 +64,8 @@ export const browserClickTool: Tool = {
 export const browserTypeTool: Tool = {
   type: "builtin",
   name: "browser_type",
-  description: "Type text into an input field or textarea. Use for filling forms, search boxes, and text inputs.",
+  description:
+    "Type text into an input field or textarea. Use for filling forms, search boxes, and text inputs.",
   inputSchema: {
     type: "object",
     properties: {
@@ -81,24 +92,29 @@ export const browserSelectTool: Tool = {
   },
 };
 
-// export const browserScreenshotTool: Tool = {
-//   type: "builtin",
-//   name: "browser_screenshot",
-//   description: "Take a screenshot of the current page or a specific element. Returns base64 encoded image for visual analysis.",
-//   inputSchema: {
-//     type: "object",
-//     properties: {
-//       selector: { type: "string", description: "CSS selector to capture a specific element (optional)" },
-//       quality: { type: "number", description: "JPEG quality 1-100 (default: 80)" },
-//       fullPage: { type: "boolean", description: "Capture the full scrollable page" },
-//     },
-//   },
-// };
+export const browserScreenshotTool: Tool = {
+  type: "builtin",
+  name: "browser_screenshot",
+  description:
+    "Take a screenshot of the current page or a specific element. Returns base64 encoded image for visual analysis.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      selector: {
+        type: "string",
+        description: "CSS selector to capture a specific element (optional)",
+      },
+      quality: { type: "number", description: "JPEG quality 1-100 (default: 80)" },
+      fullPage: { type: "boolean", description: "Capture the full scrollable page" },
+    },
+  },
+};
 
 export const browserGetContentTool: Tool = {
   type: "builtin",
   name: "browser_get_content",
-  description: "Get the HTML content of the page or a specific element. Optionally includes extracted text.",
+  description:
+    "Get the HTML content of the page or a specific element. Optionally includes extracted text.",
   inputSchema: {
     type: "object",
     properties: {
@@ -121,11 +137,15 @@ export const browserExtractTextTool: Tool = {
 export const browserExtractLinksTool: Tool = {
   type: "builtin",
   name: "browser_extract_links",
-  description: "Extract all links from the current page, including their href, text, and title attributes.",
+  description:
+    "Extract all links from the current page, including their href, text, and title attributes.",
   inputSchema: {
     type: "object",
     properties: {
-      selector: { type: "string", description: "CSS selector to limit link extraction scope (optional)" },
+      selector: {
+        type: "string",
+        description: "CSS selector to limit link extraction scope (optional)",
+      },
     },
   },
 };
@@ -133,7 +153,8 @@ export const browserExtractLinksTool: Tool = {
 export const browserEvaluateTool: Tool = {
   type: "builtin",
   name: "browser_evaluate",
-  description: "Execute JavaScript code in the browser context. Use for custom data extraction or page manipulation.",
+  description:
+    "Execute JavaScript code in the browser context. Use for custom data extraction or page manipulation.",
   inputSchema: {
     type: "object",
     properties: {
@@ -150,14 +171,20 @@ export const browserWaitForTool: Tool = {
   inputSchema: {
     type: "object",
     properties: {
-      selector: { type: "string", description: "CSS selector to wait for (optional if using script)" },
+      selector: {
+        type: "string",
+        description: "CSS selector to wait for (optional if using script)",
+      },
       condition: {
         type: "string",
         description: "Wait condition: 'visible', 'hidden', 'attached', 'detached'",
         enum: ["visible", "hidden", "attached", "detached"],
       },
       timeout: { type: "number", description: "Maximum wait time in ms" },
-      script: { type: "string", description: "Custom JavaScript condition that returns true when ready" },
+      script: {
+        type: "string",
+        description: "Custom JavaScript condition that returns true when ready",
+      },
     },
   },
 };
@@ -232,10 +259,74 @@ export const browserCloseTabTool: Tool = {
 export const browserReconnectTool: Tool = {
   type: "builtin",
   name: "browser_reconnect",
-  description: "Reconnect to the browser after a connection loss. Use this when the browser is still running but the connection was dropped.",
+  description:
+    "Relaunch the browser after a connection loss. Use this when the browser has crashed or needs to be restarted.",
   inputSchema: {
     type: "object",
     properties: {},
+  },
+};
+
+export const browserPdfTool: Tool = {
+  type: "builtin",
+  name: "browser_pdf",
+  description: "Generate a PDF of the current page. Returns base64 encoded PDF data.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      path: {
+        type: "string",
+        description: "Path to save the PDF (optional, returns data if not specified)",
+      },
+      format: {
+        type: "string",
+        description: "Paper format",
+        enum: ["Letter", "Legal", "Tabloid", "Ledger", "A0", "A1", "A2", "A3", "A4", "A5"],
+      },
+      landscape: { type: "boolean", description: "Landscape orientation" },
+      scale: { type: "number", description: "Scale factor (0.1-2)" },
+      printBackground: { type: "boolean", description: "Include background graphics" },
+    },
+  },
+};
+
+export const browserGetCookiesTool: Tool = {
+  type: "builtin",
+  name: "browser_get_cookies",
+  description: "Get all cookies for the current page.",
+  inputSchema: {
+    type: "object",
+    properties: {},
+  },
+};
+
+export const browserSetCookiesTool: Tool = {
+  type: "builtin",
+  name: "browser_set_cookies",
+  description: "Set cookies for the current page.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      cookies: {
+        type: "array",
+        description: "Array of cookies to set",
+        items: {
+          type: "object",
+          properties: {
+            name: { type: "string" },
+            value: { type: "string" },
+            domain: { type: "string" },
+            path: { type: "string" },
+            secure: { type: "boolean" },
+            httpOnly: { type: "boolean" },
+            sameSite: { type: "string", enum: ["Strict", "Lax", "None"] },
+            expirationDate: { type: "number" },
+          },
+          required: ["name", "value"],
+        },
+      },
+    },
+    required: ["cookies"],
   },
 };
 
@@ -244,7 +335,7 @@ export const BROWSER_TOOLS: Tool[] = [
   browserClickTool,
   browserTypeTool,
   browserSelectTool,
-  // browserScreenshotTool,
+  browserScreenshotTool,
   browserGetContentTool,
   browserExtractTextTool,
   browserExtractLinksTool,
@@ -256,6 +347,9 @@ export const BROWSER_TOOLS: Tool[] = [
   browserNewTabTool,
   browserCloseTabTool,
   browserReconnectTool,
+  browserPdfTool,
+  browserGetCookiesTool,
+  browserSetCookiesTool,
 ];
 
 export class BrowserToolExecutor {
@@ -269,7 +363,10 @@ export class BrowserToolExecutor {
     this.approvalManager = approvalManager;
   }
 
-  async execute(tool: string, input: Record<string, unknown>): Promise<{ success: boolean; output?: unknown; error?: string }> {
+  async execute(
+    tool: string,
+    input: Record<string, unknown>,
+  ): Promise<{ success: boolean; output?: unknown; error?: string }> {
     try {
       if (!this.session.connected) {
         return { success: false, error: "Browser not connected" };
@@ -299,8 +396,8 @@ export class BrowserToolExecutor {
         case "browser_select":
           return await this.executeSelect(input as unknown as SelectInput);
 
-        // case "browser_screenshot":
-        //   return await this.executeScreenshot(input as unknown as ScreenshotInput);
+        case "browser_screenshot":
+          return await this.executeScreenshot(input as unknown as ScreenshotInput);
 
         case "browser_get_content":
           return await this.executeGetContent(input as unknown as GetContentInput);
@@ -335,6 +432,15 @@ export class BrowserToolExecutor {
         case "browser_reconnect":
           return await this.executeReconnect();
 
+        case "browser_pdf":
+          return await this.executePdf(input as unknown as PdfInput);
+
+        case "browser_get_cookies":
+          return await this.executeGetCookies(input as unknown as GetCookiesInput);
+
+        case "browser_set_cookies":
+          return await this.executeSetCookies(input as unknown as SetCookiesInput);
+
         default:
           return { success: false, error: `Unknown browser tool: ${tool}` };
       }
@@ -346,13 +452,18 @@ export class BrowserToolExecutor {
     }
   }
 
-  private async checkApproval(tool: string, input: Record<string, unknown>): Promise<ReturnType<typeof import("./approval.ts").shouldRequireApproval>> {
+  private async checkApproval(
+    tool: string,
+    input: Record<string, unknown>,
+  ): Promise<ReturnType<typeof import("./approval.ts").shouldRequireApproval>> {
     const { shouldRequireApproval } = await import("./approval.ts");
     const action = tool.replace("browser_", "");
     return shouldRequireApproval(action, input, this.session.getConfig());
   }
 
-  private async executeNavigate(input: NavigateInput): Promise<{ success: boolean; output?: unknown }> {
+  private async executeNavigate(
+    input: NavigateInput,
+  ): Promise<{ success: boolean; output?: unknown }> {
     const result = await this.page.navigate(input);
     return { success: true, output: result };
   }
@@ -372,20 +483,24 @@ export class BrowserToolExecutor {
     return { success: true, output: result };
   }
 
-  // private async executeScreenshot(input: ScreenshotInput): Promise<{ success: boolean; output?: unknown }> {
-  //   const result = await this.page.screenshot(input);
-  //   return {
-  //     success: true,
-  //     output: {
-  //       data: result.data,
-  //       mimeType: result.mimeType,
-  //       width: result.width,
-  //       height: result.height,
-  //     },
-  //   };
-  // }
+  private async executeScreenshot(
+    input: ScreenshotInput,
+  ): Promise<{ success: boolean; output?: unknown }> {
+    const result = await this.page.screenshot(input);
+    return {
+      success: true,
+      output: {
+        data: result.data,
+        mimeType: result.mimeType,
+        width: result.width,
+        height: result.height,
+      },
+    };
+  }
 
-  private async executeGetContent(input: GetContentInput): Promise<{ success: boolean; output?: unknown }> {
+  private async executeGetContent(
+    input: GetContentInput,
+  ): Promise<{ success: boolean; output?: unknown }> {
     const result = await this.page.getContent(input);
     return { success: true, output: result };
   }
@@ -395,17 +510,23 @@ export class BrowserToolExecutor {
     return { success: true, output: { text: result } };
   }
 
-  private async executeExtractLinks(input: ExtractLinksInput): Promise<{ success: boolean; output?: unknown }> {
+  private async executeExtractLinks(
+    input: ExtractLinksInput,
+  ): Promise<{ success: boolean; output?: unknown }> {
     const result = await this.page.extractLinks(input);
     return { success: true, output: { links: result } };
   }
 
-  private async executeEvaluate(input: EvaluateInput): Promise<{ success: boolean; output?: unknown }> {
+  private async executeEvaluate(
+    input: EvaluateInput,
+  ): Promise<{ success: boolean; output?: unknown }> {
     const result = await this.page.evaluate(input);
     return { success: true, output: { result } };
   }
 
-  private async executeWaitFor(input: WaitForInput): Promise<{ success: boolean; output?: unknown }> {
+  private async executeWaitFor(
+    input: WaitForInput,
+  ): Promise<{ success: boolean; output?: unknown }> {
     const result = await this.page.waitFor(input);
     return { success: true, output: result };
   }
@@ -420,7 +541,9 @@ export class BrowserToolExecutor {
     return { success: true, output: { tabs } };
   }
 
-  private async executeSwitchTab(input: SwitchTabInput): Promise<{ success: boolean; output?: unknown }> {
+  private async executeSwitchTab(
+    input: SwitchTabInput,
+  ): Promise<{ success: boolean; output?: unknown }> {
     const tab = await this.session.switchToTab(input.tabId);
     return { success: true, output: { tab } };
   }
@@ -430,7 +553,9 @@ export class BrowserToolExecutor {
     return { success: true, output: { tab } };
   }
 
-  private async executeCloseTab(input: CloseTabInput): Promise<{ success: boolean; output?: unknown }> {
+  private async executeCloseTab(
+    input: CloseTabInput,
+  ): Promise<{ success: boolean; output?: unknown }> {
     await this.session.closeTab(input.tabId);
     return { success: true, output: { closed: true, tabId: input.tabId } };
   }
@@ -438,12 +563,12 @@ export class BrowserToolExecutor {
   async executeReconnect(): Promise<{ success: boolean; output?: unknown; error?: string }> {
     try {
       await this.session.reconnect();
-      const tabs = this.session.listTabs();
+      const tabs = await this.session.listTabs();
       return {
         success: true,
         output: {
           reconnected: true,
-          activeTab: tabs.find((t) => t.isActive) ?? null,
+          activeTab: tabs.find((t: { isActive: boolean }) => t.isActive) ?? null,
           tabCount: tabs.length,
         },
       };
@@ -453,5 +578,24 @@ export class BrowserToolExecutor {
         error: error instanceof Error ? error.message : "Reconnect failed",
       };
     }
+  }
+
+  private async executePdf(input: PdfInput): Promise<{ success: boolean; output?: unknown }> {
+    const result = await this.page.pdf(input);
+    return { success: true, output: result };
+  }
+
+  private async executeGetCookies(
+    input: GetCookiesInput,
+  ): Promise<{ success: boolean; output?: unknown }> {
+    const result = await this.page.getCookies(input);
+    return { success: true, output: result };
+  }
+
+  private async executeSetCookies(
+    input: SetCookiesInput,
+  ): Promise<{ success: boolean; output?: unknown }> {
+    const result = await this.page.setCookies(input);
+    return { success: true, output: result };
   }
 }

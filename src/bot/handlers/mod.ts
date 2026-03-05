@@ -1,4 +1,4 @@
-export { handleStart, handleHelp, handleStatus } from "./basic.ts";
+export { handleHelp, handleStart, handleStatus } from "./basic.ts";
 export { handleMessage } from "./message.ts";
 export { handlePhoto } from "./photo.ts";
 export { createVoiceHandler, setupVoiceHandler } from "./voice.ts";

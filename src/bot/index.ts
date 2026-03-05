@@ -3,7 +3,7 @@ import type { Config } from "../config/mod.ts";
 
 export function createBot(config: Config): Bot {
   const bot = new Bot(config.telegram.botToken);
-  
+
   bot.catch((err) => {
     console.error("Bot error:", err);
     const ctx = err.ctx;
@@ -21,7 +21,7 @@ export function createBot(config: Config): Bot {
 export async function startBot(bot: Bot): Promise<void> {
   const me = await bot.api.getMe();
   console.log(`Starting bot @${me.username}`);
-  
+
   bot.start({
     onStart: () => {
       console.log("Bot started successfully");

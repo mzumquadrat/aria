@@ -6,21 +6,21 @@ import { parse as parseYaml } from "@std/yaml";
 
 export async function loadConfig(configPath?: string): Promise<Config> {
   await loadEnv({ export: true });
-  
+
   const envConfig = loadFromEnv();
-  
+
   const filePath = configPath || join(Deno.cwd(), "config.yaml");
   let fileConfig: Record<string, unknown> = {};
-  
+
   try {
     const content = await Deno.readTextFile(filePath);
     fileConfig = parseYaml(content) as Record<string, unknown>;
   } catch {
     console.warn(`Config file not found at ${filePath}, using environment variables only`);
   }
-  
+
   const mergedConfig = deepMerge(fileConfig, envConfig);
-  
+
   return ConfigSchema.parse(mergedConfig);
 }
 
@@ -28,8 +28,8 @@ function loadFromEnv(): Record<string, unknown> {
   return {
     telegram: {
       botToken: Deno.env.get("TELEGRAM_BOT_TOKEN"),
-      allowedUserId: Deno.env.get("TELEGRAM_USER_ID") 
-        ? parseInt(Deno.env.get("TELEGRAM_USER_ID")!, 10) 
+      allowedUserId: Deno.env.get("TELEGRAM_USER_ID")
+        ? parseInt(Deno.env.get("TELEGRAM_USER_ID")!, 10)
         : undefined,
     },
     openrouter: {
@@ -45,39 +45,45 @@ function loadFromEnv(): Record<string, unknown> {
     brave: {
       apiKey: Deno.env.get("BRAVE_API_KEY"),
       baseUrl: Deno.env.get("BRAVE_API_BASE_URL"),
-      count: Deno.env.get("BRAVE_SEARCH_COUNT") 
-        ? parseInt(Deno.env.get("BRAVE_SEARCH_COUNT")!, 10) 
+      count: Deno.env.get("BRAVE_SEARCH_COUNT")
+        ? parseInt(Deno.env.get("BRAVE_SEARCH_COUNT")!, 10)
         : undefined,
     },
     calendar: {
-      caldav: Deno.env.get("CALDAV_SERVER_URL") ? {
-        serverUrl: Deno.env.get("CALDAV_SERVER_URL"),
-        username: Deno.env.get("CALDAV_USERNAME"),
-        password: Deno.env.get("CALDAV_PASSWORD"),
-        defaultCalendar: Deno.env.get("CALDAV_DEFAULT_CALENDAR"),
-      } : undefined,
-      google: Deno.env.get("GOOGLE_CALENDAR_ACCESS_TOKEN") ? {
-        accessToken: Deno.env.get("GOOGLE_CALENDAR_ACCESS_TOKEN"),
-        refreshToken: Deno.env.get("GOOGLE_CALENDAR_REFRESH_TOKEN"),
-        clientId: Deno.env.get("GOOGLE_CALENDAR_CLIENT_ID"),
-        clientSecret: Deno.env.get("GOOGLE_CALENDAR_CLIENT_SECRET"),
-        defaultCalendar: Deno.env.get("GOOGLE_CALENDAR_DEFAULT"),
-      } : undefined,
+      caldav: Deno.env.get("CALDAV_SERVER_URL")
+        ? {
+          serverUrl: Deno.env.get("CALDAV_SERVER_URL"),
+          username: Deno.env.get("CALDAV_USERNAME"),
+          password: Deno.env.get("CALDAV_PASSWORD"),
+          defaultCalendar: Deno.env.get("CALDAV_DEFAULT_CALENDAR"),
+        }
+        : undefined,
+      google: Deno.env.get("GOOGLE_CALENDAR_ACCESS_TOKEN")
+        ? {
+          accessToken: Deno.env.get("GOOGLE_CALENDAR_ACCESS_TOKEN"),
+          refreshToken: Deno.env.get("GOOGLE_CALENDAR_REFRESH_TOKEN"),
+          clientId: Deno.env.get("GOOGLE_CALENDAR_CLIENT_ID"),
+          clientSecret: Deno.env.get("GOOGLE_CALENDAR_CLIENT_SECRET"),
+          defaultCalendar: Deno.env.get("GOOGLE_CALENDAR_DEFAULT"),
+        }
+        : undefined,
     },
-    browser: Deno.env.get("BROWSER_CDP_ENDPOINT") ? {
-      cdpEndpoint: Deno.env.get("BROWSER_CDP_ENDPOINT"),
-      defaultTimeout: Deno.env.get("BROWSER_DEFAULT_TIMEOUT") 
-        ? parseInt(Deno.env.get("BROWSER_DEFAULT_TIMEOUT")!, 10) 
-        : undefined,
-      screenshotQuality: Deno.env.get("BROWSER_SCREENSHOT_QUALITY")
-        ? parseInt(Deno.env.get("BROWSER_SCREENSHOT_QUALITY")!, 10)
-        : undefined,
-      autoApproveNavigate: Deno.env.get("BROWSER_AUTO_APPROVE_NAVIGATE") === "true",
-      autoApproveForms: Deno.env.get("BROWSER_AUTO_APPROVE_FORMS") === "true",
-      approvalTimeout: Deno.env.get("BROWSER_APPROVAL_TIMEOUT")
-        ? parseInt(Deno.env.get("BROWSER_APPROVAL_TIMEOUT")!, 10)
-        : undefined,
-    } : undefined,
+    browser: Deno.env.get("BROWSER_CDP_ENDPOINT")
+      ? {
+        cdpEndpoint: Deno.env.get("BROWSER_CDP_ENDPOINT"),
+        defaultTimeout: Deno.env.get("BROWSER_DEFAULT_TIMEOUT")
+          ? parseInt(Deno.env.get("BROWSER_DEFAULT_TIMEOUT")!, 10)
+          : undefined,
+        screenshotQuality: Deno.env.get("BROWSER_SCREENSHOT_QUALITY")
+          ? parseInt(Deno.env.get("BROWSER_SCREENSHOT_QUALITY")!, 10)
+          : undefined,
+        autoApproveNavigate: Deno.env.get("BROWSER_AUTO_APPROVE_NAVIGATE") === "true",
+        autoApproveForms: Deno.env.get("BROWSER_AUTO_APPROVE_FORMS") === "true",
+        approvalTimeout: Deno.env.get("BROWSER_APPROVAL_TIMEOUT")
+          ? parseInt(Deno.env.get("BROWSER_APPROVAL_TIMEOUT")!, 10)
+          : undefined,
+      }
+      : undefined,
     database: {
       path: Deno.env.get("DATABASE_PATH"),
     },
@@ -89,14 +95,14 @@ function loadFromEnv(): Record<string, unknown> {
 
 function deepMerge(
   target: Record<string, unknown>,
-  source: Record<string, unknown>
+  source: Record<string, unknown>,
 ): Record<string, unknown> {
   const result = { ...target };
-  
+
   for (const key of Object.keys(source)) {
     const sourceValue = source[key];
     const targetValue = target[key];
-    
+
     if (
       sourceValue !== undefined &&
       sourceValue !== null &&
@@ -109,13 +115,13 @@ function deepMerge(
     ) {
       result[key] = deepMerge(
         targetValue as Record<string, unknown>,
-        sourceValue as Record<string, unknown>
+        sourceValue as Record<string, unknown>,
       );
     } else if (sourceValue !== undefined && sourceValue !== null) {
       result[key] = sourceValue;
     }
   }
-  
+
   return result;
 }
 
@@ -123,7 +129,7 @@ export function validateConfig(config: Config): void {
   if (!config.telegram.botToken) {
     throw new Error("TELEGRAM_BOT_TOKEN is required");
   }
-  
+
   if (!config.openrouter.apiKey) {
     throw new Error("OPENROUTER_API_KEY is required");
   }

@@ -52,7 +52,7 @@ export class BraveSearchService {
     const data: BraveApiResponse = await response.json();
 
     const results: SearchResult[] = (data.web?.results ?? [])
-      .filter((r): r is BraveWebResult & { title: string; url: string } => 
+      .filter((r): r is BraveWebResult & { title: string; url: string } =>
         r.title !== undefined && r.url !== undefined
       )
       .map((r) => ({
@@ -69,7 +69,7 @@ export class BraveSearchService {
 
   async searchWithSnippet(query: string, maxLength: number = 500): Promise<string> {
     const response = await this.search(query);
-    
+
     if (response.results.length === 0) {
       return `No results found for "${query}"`;
     }

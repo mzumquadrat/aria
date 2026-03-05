@@ -21,7 +21,7 @@ function getToolReaction(toolName: string): "👀" | "🤔" | "👍" | "⚡" {
 
 export async function handleMessage(ctx: Context): Promise<void> {
   const message = ctx.message?.text;
-  
+
   if (!message) {
     await ctx.reply("I can only process text messages for now.");
     return;
@@ -34,7 +34,7 @@ export async function handleMessage(ctx: Context): Promise<void> {
   try {
     const queue = getMessageQueue();
     const stats = queue.getStats();
-    
+
     const task = enqueueMessage(message, {
       chatId: ctx.chat!.id,
       userId: ctx.from!.id,
@@ -56,7 +56,11 @@ export async function handleMessage(ctx: Context): Promise<void> {
         return new Promise((resolve) => {
           const interval = setInterval(() => {
             const currentTask = queue.getTask(task.id);
-            if (currentTask && (currentTask.status === "completed" || currentTask.status === "failed" || currentTask.status === "timeout")) {
+            if (
+              currentTask &&
+              (currentTask.status === "completed" || currentTask.status === "failed" ||
+                currentTask.status === "timeout")
+            ) {
               clearInterval(interval);
               resolve();
             }
@@ -67,10 +71,10 @@ export async function handleMessage(ctx: Context): Promise<void> {
       await checkCompletion();
 
       const completedTask = queue.getTask(task.id);
-      
+
       if (completedTask?.result) {
         const result = completedTask.result as { response: string; toolReactions: string[] };
-        
+
         if (result.toolReactions && result.toolReactions.length > 0) {
           const lastTool = result.toolReactions[result.toolReactions.length - 1];
           const reaction = getToolReaction(lastTool);
@@ -80,7 +84,7 @@ export async function handleMessage(ctx: Context): Promise<void> {
             // Reaction might not be supported
           }
         }
-        
+
         await ctx.reply(result.response);
       } else if (completedTask?.error) {
         await ctx.reply(`Error: ${completedTask.error}`);
@@ -92,6 +96,8 @@ export async function handleMessage(ctx: Context): Promise<void> {
     }
   } catch (error) {
     console.error("Message handler error:", error);
-    await ctx.reply(`I encountered an error: ${error instanceof Error ? error.message : "Unknown error"}`);
+    await ctx.reply(
+      `I encountered an error: ${error instanceof Error ? error.message : "Unknown error"}`,
+    );
   }
 }

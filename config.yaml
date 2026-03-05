@@ -145,12 +145,18 @@ shell:
 # -------------------------------------------
 # Browser Automation
 # -------------------------------------------
-# Enable browser automation via Chrome DevTools Protocol
-# Set BROWSER_CDP_ENDPOINT to enable (e.g., http://localhost:9222)
-# Start Chrome with: google-chrome --remote-debugging-port=9222
-# Or use: chromium --remote-debugging-port=9222
+# Enable browser automation via Astral (native Deno browser automation)
+# Astral auto-downloads Chrome if not found
 browser:
-  cdp_endpoint: ${BROWSER_CDP_ENDPOINT:-}
+  # Run browser in headless mode (no visible window)
+  headless: true
+
+  # Optional: Custom Chrome/Chromium binary path
+  # Leave empty to use auto-downloaded Chrome
+  browser_path: ${BROWSER_PATH:-}
+
+  # Directory for downloaded files
+  download_dir: ./downloads
 
   # Default timeout for page operations (ms)
   default_timeout: 30000

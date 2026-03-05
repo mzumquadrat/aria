@@ -32,7 +32,9 @@ export class SchedulerService {
     }
 
     this.running = true;
-    console.log(`Scheduler started (checkInterval: ${this.config.checkInterval}ms, maxConcurrent: ${this.config.maxConcurrent})`);
+    console.log(
+      `Scheduler started (checkInterval: ${this.config.checkInterval}ms, maxConcurrent: ${this.config.maxConcurrent})`,
+    );
 
     this.intervalId = setInterval(() => {
       this.checkAndExecute();
@@ -47,7 +49,7 @@ export class SchedulerService {
     }
 
     this.running = false;
-    
+
     if (this.intervalId !== null) {
       clearInterval(this.intervalId);
       this.intervalId = null;
@@ -103,7 +105,7 @@ export class SchedulerService {
     if (!task.recurrence) return;
 
     const nextTime = getNextOccurrence(task.recurrence, task.scheduledFor);
-    
+
     if (!nextTime) {
       console.error(`Failed to calculate next occurrence for task ${task.id}`);
       return;
@@ -116,7 +118,9 @@ export class SchedulerService {
       recurrence: task.recurrence,
     });
 
-    console.log(`Scheduled next occurrence of task ${task.id} as ${newTask.id} for ${nextTime.toISOString()}`);
+    console.log(
+      `Scheduled next occurrence of task ${task.id} as ${newTask.id} for ${nextTime.toISOString()}`,
+    );
   }
 
   getStats(): { running: boolean; activeTasks: number; pendingTasks: number } {

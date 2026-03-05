@@ -18,7 +18,7 @@ export function createVoiceHandler(elevenLabs: ElevenLabsService) {
     try {
       const fileId = voice.file_id;
       const file = await ctx.api.getFile(fileId);
-      
+
       if (!file.file_path) {
         await ctx.reply("Could not retrieve voice file.");
         return;
@@ -26,7 +26,7 @@ export function createVoiceHandler(elevenLabs: ElevenLabsService) {
 
       const fileUrl = `https://api.telegram.org/file/bot${ctx.api.token}/${file.file_path}`;
       const response = await fetch(fileUrl);
-      
+
       if (!response.ok) {
         await ctx.reply("Failed to download voice file.");
         return;
@@ -44,13 +44,17 @@ export function createVoiceHandler(elevenLabs: ElevenLabsService) {
       } else {
         responseText = `I heard: "${transcription.text}"\n\nAgent not available.`;
       }
-      
+
       const ttsResult = await elevenLabs.textToSpeech(responseText);
 
       await ctx.replyWithVoice(new InputFile(new Blob([ttsResult.audioBuffer])));
     } catch (error) {
       console.error("Voice processing error:", error);
-      await ctx.reply(`Failed to process voice message: ${error instanceof Error ? error.message : "Unknown error"}`);
+      await ctx.reply(
+        `Failed to process voice message: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`,
+      );
     }
   };
 }

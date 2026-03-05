@@ -1,6 +1,11 @@
 import { assertEquals } from "@std/assert";
 import { TaskQueue } from "../../src/queue/queue.ts";
-import { enqueueMessage, getMessageQueue, initializeMessageQueue, getQueueStats } from "../../src/queue/scheduler.ts";
+import {
+  enqueueMessage,
+  getMessageQueue,
+  getQueueStats,
+  initializeMessageQueue,
+} from "../../src/queue/scheduler.ts";
 import type { Config } from "../../src/config/mod.ts";
 
 function createMockBot(): { bot: unknown; calls: unknown[] } {

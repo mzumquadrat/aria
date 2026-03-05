@@ -1,12 +1,12 @@
 import { generateUUIDv4 } from "../storage/uuid.ts";
 import type {
-  QueuedTask,
   QueueConfig,
+  QueuedTask,
   QueueStats,
   TaskContext,
+  TaskHandler,
   TaskPriority,
   TaskStatus,
-  TaskHandler,
 } from "./types.ts";
 import { getPriorityValue } from "./types.ts";
 
@@ -49,7 +49,7 @@ export class TaskQueue<T = unknown> {
     type: string,
     payload: T,
     context: TaskContext,
-    priority: TaskPriority = "normal"
+    priority: TaskPriority = "normal",
   ): QueuedTask<T> {
     const task: QueuedTask<T> = {
       id: generateUUIDv4(),
