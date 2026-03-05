@@ -1,5 +1,5 @@
 import type { Config } from "../config/mod.ts";
-import { toolRegistry, type ToolResult } from "./tools.ts";
+import { toolRegistry, type PhotoService, type ToolResult } from "./tools.ts";
 import { formatSoulForPrompt, loadSoul } from "../soul/mod.ts";
 import { getLockManager, Mutex } from "./lock.ts";
 import type { MessageContent } from "../vision/types.ts";
@@ -69,6 +69,7 @@ export class Agent {
   private historyMutexes: Map<number, Mutex> = new Map();
   private maxHistoryLength: number = 20;
   private onToolCall: ToolCallCallback | null = null;
+  private photoService: PhotoService | null = null;
   private pendingImages: Map<
     number,
     Array<{ imageData: string; mimeType: string; description?: string }>
@@ -80,6 +81,10 @@ export class Agent {
 
   setToolCallCallback(callback: ToolCallCallback): void {
     this.onToolCall = callback;
+  }
+
+  setPhotoService(service: PhotoService | null): void {
+    this.photoService = service;
   }
 
   addPendingImage(chatId: number, imageData: string, mimeType: string, description?: string): void {
@@ -104,6 +109,64 @@ export class Agent {
 
   clearPendingImages(chatId: number): void {
     this.pendingImages.delete(chatId);
+  }
+
+  /**
+   * Process tool result to detect and send image data automatically.
+   * When a tool returns image data (data + mimeType), sends it as a photo
+   * and returns a simplified result to avoid large base64 in conversation history.
+   */
+  private async processImageResult(result: ToolResult, chatId: number): Promise<ToolResult> {
+    // Check if the result contains image data
+    if (
+      result.success &&
+      result.output &&
+      typeof result.output === "object"
+    ) {
+      const output = result.output as Record<string, unknown>;
+      
+      // Check for image data pattern: { data: string, mimeType: "image/..." }
+      if (
+        typeof output.data === "string" &&
+        typeof output.mimeType === "string" &&
+        output.mimeType.startsWith("image/")
+      ) {
+        // We have image data - send it as a photo if service is available
+        if (this.photoService && chatId !== 0) {
+          try {
+            const caption = output.caption as string | undefined;
+            const sent = await this.photoService.sendPhoto(
+              chatId,
+              output.data,
+              caption,
+            );
+            
+            if (sent) {
+              console.log(`[AGENT] Auto-sent image from tool ${result.tool}`);
+              
+              // Return a simplified result without the large base64 data
+              const simplifiedOutput: Record<string, unknown> = {
+                imageSent: true,
+                mimeType: output.mimeType,
+              };
+              
+              // Preserve other metadata like width/height if present
+              if (typeof output.width === "number") simplifiedOutput.width = output.width;
+              if (typeof output.height === "number") simplifiedOutput.height = output.height;
+              
+              return {
+                ...result,
+                output: simplifiedOutput,
+              };
+            }
+          } catch (error) {
+            console.error(`[AGENT] Failed to auto-send image: ${error}`);
+          }
+        }
+      }
+    }
+    
+    return result;
   }
 
   private getHistory(chatId: number): Message[] {
@@ -183,9 +246,12 @@ export class Agent {
         const toolResults = await this.executeToolCallsParallel(llmResponse.tool_calls);
 
         for (const { toolCall, result } of toolResults) {
+          // Check if the result contains image data that should be sent as a photo
+          const processedResult = await this.processImageResult(result, chatId);
+          
           this.addToHistory(history, {
             role: "tool",
-            content: JSON.stringify(result),
+            content: JSON.stringify(processedResult),
             tool_call_id: toolCall.id,
             name: toolCall.function.name,
           });

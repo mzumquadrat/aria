@@ -9,7 +9,7 @@ import { createBot, setupBot, startBot, stopBot } from "./bot/mod.ts";
 import { createElevenLabsService } from "./elevenlabs/mod.ts";
 import { createBraveSearchService } from "./brave/mod.ts";
 import { createCalendarService } from "./calendar/mod.ts";
-import { initializeAgent } from "./agent/mod.ts";
+import { getAgent, initializeAgent } from "./agent/mod.ts";
 import { toolRegistry } from "./agent/tools.ts";
 import { getMemoryRepository } from "./storage/memory/mod.ts";
 import { getScheduler, initializeScheduler } from "./scheduler/mod.ts";
@@ -107,6 +107,12 @@ async function main(): Promise<void> {
   const memoryRepo = getMemoryRepository();
   toolRegistry.setMemoryRepo(memoryRepo);
   console.log("Memory service initialized");
+
+  // Also set photo service on agent for auto-sending images from tool results
+  const agent = getAgent();
+  if (agent) {
+    agent.setPhotoService(photoService);
+  }
 
   const bot = createBot(config);
 
