@@ -33,13 +33,13 @@ export function getCachedSoul(): Soul | null {
 
 export async function reloadSoul(soulPath?: string): Promise<Soul> {
   soulCache = null;
-  return loadSoul(soulPath);
+  return await loadSoul(soulPath);
 }
 
 export function extractSection(content: string, sectionTitle: string): string | null {
   const lines = content.split("\n");
   let inSection = false;
-  let sectionContent: string[] = [];
+  const sectionContent: string[] = [];
   
   for (const line of lines) {
     if (line.startsWith("## ") && line.includes(sectionTitle)) {

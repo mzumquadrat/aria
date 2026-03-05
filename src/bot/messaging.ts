@@ -22,7 +22,7 @@ const MARKDOWN_V2_SPECIAL_CHARS = /[_*[\]()~`>#+=|{}.!-]/g;
 export function escapeMarkdownV2(text: string): string {
   // First, remove any existing backslash escapes that might have been
   // added by the LLM (to avoid double-escaping)
-  let unescaped = text.replace(/\\([_*[\]()~`>#+=|{}.!-])/g, "$1");
+  const unescaped = text.replace(/\\([_*[\]()~`>#+=|{}.!-])/g, "$1");
   
   // Now apply proper escaping
   // We need to be careful to preserve formatting syntax
@@ -35,8 +35,8 @@ export function escapeMarkdownV2(text: string): string {
   let lastIndex = 0;
   
   // Find all formatting entities
-  let match: RegExpExecArray | null;
-  while ((match = formattingPattern.exec(unescaped)) !== null) {
+  let match: RegExpExecArray | null = formattingPattern.exec(unescaped);
+  while (match !== null) {
     // Add text before this match (needs escaping)
     if (match.index > lastIndex) {
       parts.push({
@@ -50,6 +50,7 @@ export function escapeMarkdownV2(text: string): string {
       isFormatting: true,
     });
     lastIndex = match.index + match[0].length;
+    match = formattingPattern.exec(unescaped);
   }
   
   // Add remaining text after last match

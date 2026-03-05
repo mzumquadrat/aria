@@ -114,7 +114,7 @@ export async function waitForQueueCompletion(timeoutMs?: number): Promise<void> 
 
   console.log(`[MESSAGE QUEUE] Waiting for ${stats.running} running task(s) to complete (timeout: ${timeout}ms)`);
 
-  return new Promise((resolve) => {
+  await new Promise<void>((resolve) => {
     const checkInterval = setInterval(() => {
       const currentStats = queueInstance?.getStats();
       const elapsed = Date.now() - startTime;

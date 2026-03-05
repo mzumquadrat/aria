@@ -56,7 +56,7 @@ export class SchedulerService {
     console.log("Scheduler stopped");
   }
 
-  private async checkAndExecute(): Promise<void> {
+  private checkAndExecute(): void {
     if (!this.running) return;
 
     const availableSlots = this.config.maxConcurrent - this.activeTasks.size;
@@ -99,7 +99,7 @@ export class SchedulerService {
     }
   }
 
-  private async scheduleNextRecurrence(task: ScheduledTask): Promise<void> {
+  private scheduleNextRecurrence(task: ScheduledTask): void {
     if (!task.recurrence) return;
 
     const nextTime = getNextOccurrence(task.recurrence, task.scheduledFor);

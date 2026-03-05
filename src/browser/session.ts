@@ -15,7 +15,6 @@ export class BrowserSession {
   private sessionId: string | null = null;
   private targets = new Map<string, TargetInfo>();
   private config: BrowserConfig;
-  private initialConnect = true;
 
   constructor(config: BrowserConfig) {
     this.config = config;
@@ -26,7 +25,6 @@ export class BrowserSession {
     await this.client.connect();
     this.setupEventHandlers();
     await this.discoverAndAttachTargets();
-    this.initialConnect = false;
   }
 
   private setupEventHandlers(): void {
@@ -61,8 +59,7 @@ export class BrowserSession {
 
     const pageTarget = result.targetInfos.find((t) => t.type === "page");
     if (pageTarget) {
-      this.activeTargetId = pageTarget.targetId;
-      await this.enablePageDomains();
+      await this.attachToTarget(pageTarget.targetId);
     }
   }
 
@@ -98,11 +95,6 @@ export class BrowserSession {
   }
 
   private async attachToTarget(targetId: string): Promise<void> {
-    if (this.initialConnect && targetId === this.activeTargetId) {
-      await this.enablePageDomains();
-      return;
-    }
-
     const result = await this.client.send<{ sessionId: string }>(
       "Target.attachToTarget",
       { targetId, flatten: true },
