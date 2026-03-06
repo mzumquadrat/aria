@@ -58,9 +58,12 @@ export function getSkillById(id: string): SkillRecord | null {
 export function getSkillByName(name: string): SkillRecord | null {
   const db = getDatabase();
   const row = db.queryOne<Record<string, unknown>>(
-    "SELECT * FROM skills WHERE name = ? COLLATE NOCASE",
+    "SELECT * FROM skills WHERE name LIKE ?",
     name,
   );
+  if (!row) {
+    console.error(`[SKILL REPO] No match for "${name}" (${name.length} chars, bytes: ${Array.from(name).map(c => c.charCodeAt(0)).join(',')})`);
+  }
   return row ? rowToSkillRecord(row) : null;
 }
 

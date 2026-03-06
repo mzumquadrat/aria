@@ -511,6 +511,11 @@ export class ToolRegistry {
     const skill = getSkillByName(skillName);
 
     if (!skill) {
+      const { getDatabase } = await import("../storage/sqlite.ts");
+      const db = getDatabase();
+      const allSkills = db.query<{ name: string }>("SELECT name FROM skills");
+      console.error(`[SKILL ERROR] Tool: ${tool}, SkillName: "${skillName}"`);
+      console.error(`[SKILL ERROR] Available skills:`, allSkills.map(s => s.name).join(", "));
       return { tool, success: false, error: `Skill not found: ${skillName}` };
     }
 
