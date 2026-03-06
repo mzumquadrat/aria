@@ -378,12 +378,16 @@ export class ToolRegistry {
   private getSkillTools(): Tool[] {
     const skills = getAllSkills(true);
     console.log(`[SKILL TOOLS] Registered ${skills.length} skills: ${skills.map(s => s.name).join(", ")}`);
-    return skills.map((skill) => ({
-      type: "skill" as const,
-      name: `skill_${skill.name.toLowerCase().replace(/\s+/g, "_")}`,
-      description: skill.description,
-      inputSchema: this.getSkillInputSchema(skill),
-    }));
+    return skills.map((skill) => {
+      const toolName = `skill_${skill.name.toLowerCase().replace(/\s+/g, "_")}`;
+      console.log(`[SKILL TOOLS] Tool name: "${toolName}" for skill "${skill.name}"`);
+      return {
+        type: "skill" as const,
+        name: toolName,
+        description: skill.description,
+        inputSchema: this.getSkillInputSchema(skill),
+      };
+    });
   }
 
   private getSkillInputSchema(skill: SkillRecord): Record<string, unknown> {
@@ -507,8 +511,9 @@ export class ToolRegistry {
   }
 
   private async executeSkillTool(tool: string, input: unknown): Promise<ToolResult> {
+    console.log(`[SKILL EXEC] Tool called: "${tool}"`);
     const skillName = tool.replace("skill_", "").replace(/_/g, " ");
-    console.log(`[SKILL] Looking up skill: tool="${tool}" -> skillName="${skillName}"`);
+    console.log(`[SKILL EXEC] Converted to skillName: "${skillName}"`);
     const { getSkillByName } = await import("../skills/repository.ts");
     const skill = getSkillByName(skillName);
 
