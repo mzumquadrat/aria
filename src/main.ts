@@ -33,6 +33,11 @@ async function main(): Promise<void> {
   await initializeDatabase({ path: config.database?.path || "./data/aria.db" });
   console.log("Database initialized");
 
+  const db = getDatabase();
+  const skillCount = db.queryOne<{ count: number }>("SELECT COUNT(*) as count FROM skills");
+  const skillNames = db.query<{ name: string }>("SELECT name FROM skills");
+  console.log(`Skills in database: ${skillCount?.count ?? 0} (${skillNames.map(s => s.name).join(", ")})`);
+
   initializeAsyncDatabase(getDatabase());
   console.log("Async database layer initialized");
 
