@@ -377,6 +377,7 @@ export class ToolRegistry {
 
   private getSkillTools(): Tool[] {
     const skills = getAllSkills(true);
+    console.log(`[SKILL TOOLS] Registered ${skills.length} skills: ${skills.map(s => s.name).join(", ")}`);
     return skills.map((skill) => ({
       type: "skill" as const,
       name: `skill_${skill.name.toLowerCase().replace(/\s+/g, "_")}`,
@@ -507,15 +508,11 @@ export class ToolRegistry {
 
   private async executeSkillTool(tool: string, input: unknown): Promise<ToolResult> {
     const skillName = tool.replace("skill_", "").replace(/_/g, " ");
+    console.log(`[SKILL] Looking up skill: tool="${tool}" -> skillName="${skillName}"`);
     const { getSkillByName } = await import("../skills/repository.ts");
     const skill = getSkillByName(skillName);
 
     if (!skill) {
-      const { getDatabase } = await import("../storage/sqlite.ts");
-      const db = getDatabase();
-      const allSkills = db.query<{ name: string }>("SELECT name FROM skills");
-      console.error(`[SKILL ERROR] Tool: ${tool}, SkillName: "${skillName}"`);
-      console.error(`[SKILL ERROR] Available skills:`, allSkills.map(s => s.name).join(", "));
       return { tool, success: false, error: `Skill not found: ${skillName}` };
     }
 

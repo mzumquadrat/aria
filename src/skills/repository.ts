@@ -58,11 +58,12 @@ export function getSkillById(id: string): SkillRecord | null {
 export function getSkillByName(name: string): SkillRecord | null {
   const db = getDatabase();
   const row = db.queryOne<Record<string, unknown>>(
-    "SELECT * FROM skills WHERE name LIKE ?",
+    "SELECT * FROM skills WHERE LOWER(name) = LOWER(?)",
     name,
   );
   if (!row) {
-    console.error(`[SKILL REPO] No match for "${name}" (${name.length} chars, bytes: ${Array.from(name).map(c => c.charCodeAt(0)).join(',')})`);
+    const allSkills = db.query<{ name: string }>("SELECT name FROM skills");
+    console.error(`[SKILL REPO] No match for "${name}". Available: ${allSkills.map(s => s.name).join(", ")}`);
   }
   return row ? rowToSkillRecord(row) : null;
 }
