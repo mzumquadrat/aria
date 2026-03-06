@@ -401,12 +401,15 @@ export class ToolRegistry {
 
   async executeTool(call: ToolCall): Promise<ToolResult> {
     const { tool, input } = call;
+    console.log(`[EXECUTE TOOL] Called with tool="${tool}", starts with skill_: ${tool.startsWith("skill_")}`);
 
     let result: ToolResult;
 
     if (tool.startsWith("skill_")) {
+      console.log(`[EXECUTE TOOL] Detected skill tool, calling executeSkillTool`);
       result = await this.executeSkillTool(tool, input);
     } else {
+      console.log(`[EXECUTE TOOL] Not a skill tool, using switch statement`);
       switch (tool) {
         case "web_search":
           result = await this.executeWebSearch(input as { query: string });
@@ -487,9 +490,11 @@ export class ToolRegistry {
           );
           break;
         default:
+          console.log(`[EXECUTE TOOL] Hit default case for tool="${tool}"`);
           if (tool.startsWith("browser_")) {
             result = await this.executeBrowserTool(tool, input as Record<string, unknown>);
           } else {
+            console.log(`[EXECUTE TOOL] Unknown tool, returning error`);
             result = { tool, success: false, error: `Unknown tool: ${tool}` };
           }
       }

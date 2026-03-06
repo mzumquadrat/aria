@@ -390,7 +390,8 @@ export class Agent {
 
   private getToolsSchema(): unknown[] {
     const tools = toolRegistry.getAvailableTools();
-    return tools.map((tool) => ({
+    console.log(`[TOOLS SCHEMA] Sending ${tools.length} tools to LLM`);
+    const schema = tools.map((tool) => ({
       type: "function",
       function: {
         name: tool.name,
@@ -398,6 +399,8 @@ export class Agent {
         parameters: tool.inputSchema || { type: "object", properties: {} },
       },
     }));
+    console.log(`[TOOLS SCHEMA] Tool names: ${tools.map(t => t.name).join(", ")}`);
+    return schema;
   }
 
   private executeToolCall(toolCall: ToolCallMessage): Promise<ToolResult> {
