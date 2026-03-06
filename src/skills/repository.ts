@@ -58,7 +58,7 @@ export function getSkillById(id: string): SkillRecord | null {
 export function getSkillByName(name: string): SkillRecord | null {
   const db = getDatabase();
   const row = db.queryOne<Record<string, unknown>>(
-    "SELECT * FROM skills WHERE name = ?",
+    "SELECT * FROM skills WHERE name = ? COLLATE NOCASE",
     name,
   );
   return row ? rowToSkillRecord(row) : null;
