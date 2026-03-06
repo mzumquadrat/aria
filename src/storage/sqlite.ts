@@ -151,14 +151,6 @@ export class SQLiteDatabase {
       CREATE INDEX IF NOT EXISTS idx_audit_log_created_at ON audit_log(created_at)
     `);
 
-    this.db.exec(`
-      CREATE INDEX IF NOT EXISTS idx_conversations_chat_id ON conversations(chat_id)
-    `);
-
-    this.db.exec(`
-      CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at)
-    `);
-
     const conversationCols = this.query<
       { name: string }
     >("PRAGMA table_info(conversations)");
@@ -175,6 +167,14 @@ export class SQLiteDatabase {
     if (!messageCols.some((c) => c.name === "tool_calls")) {
       this.db.exec("ALTER TABLE messages ADD COLUMN tool_calls TEXT");
     }
+
+    this.db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_conversations_chat_id ON conversations(chat_id)
+    `);
+
+    this.db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at)
+    `);
   }
 
   run(sql: string, ...params: RestBindParameters): void {
