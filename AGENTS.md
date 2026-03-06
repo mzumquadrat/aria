@@ -252,3 +252,72 @@ soul.md              # Personality definition
 deno.json            # Deno configuration and tasks
 justfile             # Build recipes
 ```
+
+## Version Management
+
+When completing a significant set of changes, assess whether a version bump and release is warranted.
+
+### Change Classification
+
+**MAJOR bump (x.0.0)** - Breaking changes:
+- API changes that break backward compatibility
+- Removal of features
+- Major architectural changes
+- Database schema changes that require migration
+
+**MINOR bump (0.x.0)** - New features:
+- New skills, tools, or capabilities
+- New configuration options
+- New API endpoints or commands
+- Significant enhancements to existing features
+- Example: Implementing message persistence, adding briefing skill
+
+**PATCH bump (0.0.x)** - Bug fixes and small improvements:
+- Bug fixes
+- Performance improvements
+- Documentation updates
+- Minor UI tweaks
+- Refactoring without behavior changes
+
+### When to Release
+
+**Release (bump + commit + tag + push) when:**
+- Changes include new user-facing features (minor)
+- Breaking changes are introduced (major)
+- Critical bug fixes are made (patch)
+- A cohesive feature set is complete
+
+**Skip release for:**
+- Work-in-progress changes
+- Minor refactoring
+- Experimental features
+- Single file edits without functional impact
+
+### Release Workflow
+
+When a release is warranted:
+
+```bash
+# 1. Determine version bump type and update deno.json
+#    (read current version, increment appropriately)
+
+# 2. Stage and commit changes
+git add -A
+git commit -m "release: v<VERSION> - <brief description>"
+
+# 3. Create annotated tag
+git tag -a v<VERSION> -m "Release v<VERSION>: <brief description>"
+
+# 4. Push commit and tag
+git push origin main
+git push origin v<VERSION>
+```
+
+### Version Detection
+
+Read current version from `deno.json`:
+```bash
+grep '"version"' deno.json | head -1
+```
+
+The version follows semver (MAJOR.MINOR.PATCH). After a release, update the version field in `deno.json` accordingly.

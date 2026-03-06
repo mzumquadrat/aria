@@ -3,6 +3,12 @@ import { toolRegistry, type PhotoService, type ToolResult } from "./tools.ts";
 import { formatSoulForPrompt, loadSoul } from "../soul/mod.ts";
 import { getLockManager, Mutex } from "./lock.ts";
 import type { MessageContent } from "../vision/types.ts";
+import {
+  getConversationRepository,
+  type CreateMessageInput,
+  type Message as StoredMessage,
+  type ToolCallData,
+} from "../storage/conversation/mod.ts";
 
 export type ToolCallCallback = (toolName: string) => void;
 
@@ -172,10 +178,26 @@ export class Agent {
   private getHistory(chatId: number): Message[] {
     let history = this.conversationHistories.get(chatId);
     if (!history) {
-      history = [];
+      const repo = getConversationRepository();
+      const storedMessages = repo.getRecentMessages(chatId, this.maxHistoryLength);
+      history = storedMessages.map((m) => this.storedToLLMMessage(m));
       this.conversationHistories.set(chatId, history);
     }
     return history;
+  }
+
+  private storedToLLMMessage(m: StoredMessage): Message {
+    const msg: Message = {
+      role: m.role,
+      content: m.content,
+    };
+    if (m.toolCallId) {
+      msg.tool_call_id = m.toolCallId;
+    }
+    if (m.toolCalls) {
+      msg.tool_calls = m.toolCalls;
+    }
+    return msg;
   }
 
   private getMutex(chatId: number): Mutex {
@@ -196,15 +218,15 @@ export class Agent {
 
   private async processMessageInternal(userMessage: string, chatId: number): Promise<string> {
     const history = this.getHistory(chatId);
-    const tools = this.getToolsSchema();
     const soul = await loadSoul();
     const soulPrompt = formatSoulForPrompt(soul.content);
 
-    const systemMessage = `${SYSTEM_PROMPT}\n\n${soulPrompt}\n\nAvailable tools:\n${
-      JSON.stringify(tools, null, 2)
-    }`;
+    const systemMessage = `${SYSTEM_PROMPT}\n\n${soulPrompt}`;
 
-    this.addToHistory(history, { role: "system", content: systemMessage });
+    const hasSystemMessage = history.some((m) => m.role === "system");
+    if (!hasSystemMessage) {
+      this.addToHistory(history, { role: "system", content: systemMessage }, chatId);
+    }
 
     const pendingImages = this.pendingImages.get(chatId) ?? [];
     if (pendingImages.length > 0) {
@@ -221,10 +243,10 @@ export class Agent {
         });
       }
 
-      this.addToHistory(history, { role: "user", content: userContent as MessageContent });
+      this.addToHistory(history, { role: "user", content: userContent as MessageContent }, chatId);
       this.clearPendingImages(chatId);
     } else {
-      this.addToHistory(history, { role: "user", content: userMessage });
+      this.addToHistory(history, { role: "user", content: userMessage }, chatId);
     }
 
     let response: string | null = null;
@@ -241,12 +263,11 @@ export class Agent {
           role: "assistant",
           content: llmResponse.content || "",
           tool_calls: llmResponse.tool_calls,
-        });
+        }, chatId);
 
         const toolResults = await this.executeToolCallsParallel(llmResponse.tool_calls);
 
         for (const { toolCall, result } of toolResults) {
-          // Check if the result contains image data that should be sent as a photo
           const processedResult = await this.processImageResult(result, chatId);
           
           this.addToHistory(history, {
@@ -254,7 +275,7 @@ export class Agent {
             content: JSON.stringify(processedResult),
             tool_call_id: toolCall.id,
             name: toolCall.function.name,
-          });
+          }, chatId);
         }
 
         continue;
@@ -263,7 +284,7 @@ export class Agent {
       if (llmResponse.content) {
         response = llmResponse.content;
         console.log(`[ARIA] ${response}`);
-        this.addToHistory(history, { role: "assistant", content: response });
+        this.addToHistory(history, { role: "assistant", content: response }, chatId);
       }
     }
 
@@ -282,16 +303,37 @@ export class Agent {
     return Promise.all(promises);
   }
 
-  private addToHistory(history: Message[], message: Message): void {
+  private addToHistory(history: Message[], message: Message, chatId: number): void {
     history.push(message);
+
+    const repo = getConversationRepository();
+    const conversation = repo.getOrCreateConversation(chatId);
+
+    const content = typeof message.content === "string"
+      ? message.content
+      : JSON.stringify(message.content);
+
+    const input: CreateMessageInput = {
+      conversationId: conversation.id,
+      role: message.role,
+      content,
+      toolCallId: message.tool_call_id,
+      toolCalls: message.tool_calls?.map((tc): ToolCallData => ({
+        id: tc.id,
+        type: tc.type,
+        function: tc.function,
+      })),
+    };
+    repo.createMessage(input);
+
     if (history.length > this.maxHistoryLength + 1) {
-      const systemMessages = history.filter((m) => m.role === "system");
+      const lastSystemMessage = history.filter((m) => m.role === "system").at(-1);
       const otherMessages = history.filter((m) => m.role !== "system");
       history.length = 0;
-      history.push(
-        ...systemMessages,
-        ...otherMessages.slice(-this.maxHistoryLength),
-      );
+      if (lastSystemMessage) {
+        history.push(lastSystemMessage);
+      }
+      history.push(...otherMessages.slice(-this.maxHistoryLength));
     }
   }
 
@@ -375,12 +417,15 @@ export class Agent {
   }
 
   clearHistory(chatId?: number): void {
+    const repo = getConversationRepository();
     if (chatId !== undefined) {
       this.conversationHistories.delete(chatId);
       this.historyMutexes.delete(chatId);
+      repo.clearConversation(chatId);
     } else {
       this.conversationHistories.clear();
       this.historyMutexes.clear();
+      repo.clearAllConversations();
     }
   }
 }
